@@ -1,0 +1,42 @@
+{
+  "raw meat": {
+    "icon_name": "raw meat",
+    "base_icon": "meat",
+    "variant": "deep raw-red fill, pale-pink fat accents; one small dark-red drip and one tiny white speck"
+  },
+  "cooked meat": {
+    "icon_name": "cooked meat",
+    "base_icon": "meat",
+    "variant": "fills: deep chestnut brown (meat), warm beige (bone); marks: two pale cream steam swirls above"
+  },
+  "diced raw meat": {
+    "icon_name": "diced raw meat",
+    "base_icon": "meat",
+    "variant": "deep crimson + pale pink + white; white fat specks; one tiny dark-red juice drip"
+  },
+  "diced cooked meat": {
+    "icon_name": "diced cooked meat",
+    "base_icon": "meat",
+    "variant": "deep brown, reddish-brown, pale beige; small dark char specks"
+  },
+  "egg": {
+    "icon_name": "egg",
+    "base_icon": "egg",
+    "variant": "ivory shell + pale yellow yolk; two tiny brown specks"
+  },
+  "egg white": {
+    "icon_name": "egg white",
+    "base_icon": "egg",
+    "variant": "warm cream shell + pure white interior; two small pale-gray bubbles"
+  },
+  "yolk": {
+    "icon_name": "yolk",
+    "base_icon": "egg",
+    "variant": "white shell + golden yellow yolk; one small white highlight dot on yolk"
+  },
+  "paste": {
+    "icon_name": "paste",
+    "base_icon": "paste",
+    "variant": "Creamy beige fill with muted olive accent; tiny central swirl and single bottom drip."
+  }
+}
