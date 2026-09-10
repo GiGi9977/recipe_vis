@@ -225,6 +225,15 @@ function isAddEdge(edge) {
   return a === "add" || t === "add";
 }
 
+function isProcessEdge(edge) {
+  return !isAddEdge(edge);
+}
+
+function isMainToContainerEdge(d, sNode, tNode) {
+  if (!sNode || !tNode) return false;
+  return sNode.domain === "main" && isContainerNode(tNode);
+}
+
 function addTrianglePath(x1, y1, x2, y2, baseWidth = 10, baseInset = 4) {
   // x1,y1: source side
   // x2,y2: target side (triangle tip)
@@ -264,6 +273,33 @@ function getAnchorPosition(node, anchor) {
   }
 
   return { x: node.x, y: node.y };
+}
+
+function resolveAnchorForExactDumbbell(node, side, isSource = false) {
+  if (!node || !node.shape_dumbbell) return "M";
+
+  // only_r1 / only_r2 明确落上/下半
+  if (side === "R1") return "T";
+  if (side === "R2") return "B";
+
+  // shared 默认走中间
+  return "M";
+}
+
+function effectiveAnchor(node, rawAnchor, edgeStyle, isSource) {
+  if (!node) return rawAnchor || "M";
+
+  if (node.kind === "merged_similar" || node.shape_dumbbell) {
+    if (edgeStyle === "R1") {
+      return isSource ? "T" : "T";
+    }
+    if (edgeStyle === "R2") {
+      return isSource ? "B" : "B";
+    }
+    return rawAnchor || "M";
+  }
+
+  return rawAnchor || "M";
 }
 
 function boundaryPointFromCenter(centerX, centerY, radius, fromX, fromY) {
@@ -385,19 +421,73 @@ function normalizeFlavorList(flavorValue) {
 }
 
 const FLAVOR_COLORS = {
-  salty: "#8bc7bd",
+  savory: "#7F7F7F",
   sweet: "#e39ac7",
-  spicy: "#e4572e",
   sour: "#e3ff65",
-  bitter: "#8c6d3a",
-  umami: "#f38c38",
-  savory: "#6f6f6f",
-  aroma: "#b938c5",
-  garlic: "#ad773c",
-  ginger: "#6fc35a",
-  scallion: "#72c85a",
+  umami: "#7A5C8E",
+  aromatic: "#5FAF5F",
+  spicing: "#9A6A3A",
+  spicy: "#EC5823",
+  deodorizing: "#4FA3A5",
   none: "#ffffff"
 };
+
+const GREEK_LETTERS = [
+  "α","β","γ","δ","ε","ζ","η","θ","ι","κ","λ","μ",
+  "ν","ξ","ο","π","ρ","σ","τ","υ","φ","χ","ψ","ω"
+];
+
+function getAuxCategoryName(node) {
+  if (!node) return null;
+  if (node.domain !== "aux") return null;
+
+  const name1 = node.state_r1 ? node.state_r1[0] : null;
+  const name2 = node.state_r2 ? node.state_r2[0] : null;
+
+  return (name1 || name2 || "").trim().toLowerCase() || null;
+}
+
+function buildAuxGreekMap(nodes) {
+  const categories = [];
+
+  nodes.forEach(n => {
+    const cat = getAuxCategoryName(n);
+    if (cat && !categories.includes(cat)) {
+      categories.push(cat);
+    }
+  });
+
+  categories.sort();
+
+  const map = new Map();
+  categories.forEach((cat, i) => {
+    const letter = i < GREEK_LETTERS.length ? GREEK_LETTERS[i] : `α${i}`;
+    map.set(cat, letter);
+  });
+
+  return map;
+}
+
+function hexToRgb(hex) {
+  const s = String(hex || "").replace("#", "").trim();
+  if (s.length !== 6) return null;
+
+  return {
+    r: parseInt(s.slice(0, 2), 16),
+    g: parseInt(s.slice(2, 4), 16),
+    b: parseInt(s.slice(4, 6), 16)
+  };
+}
+
+function getReadableTextColor(bgColor) {
+  const rgb = hexToRgb(bgColor);
+  if (!rgb) return "#000000";
+
+  // 感知亮度
+  const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+
+  return luminance > 160 ? "#000000" : "#ffffff";
+}
 
 function getFlavorColor(name) {
   const k = normValue(name);
@@ -477,25 +567,39 @@ function drawFlavorRing(g, radiusInner, radiusOuter, flavors) {
 }
 
 function nodeVisualSpec(node) {
+  const isContainer = isContainerNode(node);
   const isAux = node.domain === "aux";
+  
+  let singleSpec;
 
-  const singleSpec = isAux
-    ? {
-        outerR: 11,
-        centerR: 5,
-        flavorInnerR: null,
-        flavorOuterR: null,
-        physicalR: 7,
-        waistInset: 4
-      }
-    : {
-        outerR: 24,
-        centerR: 12,
-        flavorInnerR: 9,
-        flavorOuterR: 12,
-        physicalR: 16,
-        waistInset: 8
-      };
+  if (isContainer) {
+    singleSpec = {
+      outerR: 16,
+      centerR: 9,
+      flavorInnerR: 7,
+      flavorOuterR: 9,
+      physicalR: 11,
+      waistInset: 8
+    };
+  } else if (isAux) {
+    singleSpec = {
+      outerR: 11,
+      centerR: 5,
+      flavorInnerR: null,
+      flavorOuterR: null,
+      physicalR: 7,
+      waistInset: 4
+    };
+  } else {
+    singleSpec = {
+      outerR: 24,
+      centerR: 12,
+      flavorInnerR: 9,
+      flavorOuterR: 12,
+      physicalR: 16,
+      waistInset: 8
+    };
+  }
 
   if (isDumbbellLike(node)) {
     return {
@@ -588,7 +692,7 @@ function isShareNode(node) {
 }
 
 function isDumbbellLike(node) {
-  return node.kind === "merged_similar" || node.shared_add_dumbbell;
+  return node.kind === "merged_similar" || !!node.shape_dumbbell;
 }
 
 function hasSide(node, side) {
@@ -612,6 +716,13 @@ function uniqueById(arr) {
     seen.add(n.id);
     return true;
   });
+}
+
+function isContainerNode(d) {
+  if (!d) return false;
+  const type1 = d.state_r1 ? d.state_r1[1] : "";
+  const type2 = d.state_r2 ? d.state_r2[1] : "";
+  return type1 === "container" || type2 === "container";
 }
 
 function buildOutMap(edges) {
@@ -756,7 +867,7 @@ function assignAuxRelativeToBranch(nodes, edges) {
   const { nodeById, inMap } = buildMaps(nodes, edges);
 
   const AUX_PROCESS_STEP = 45;
-  const AUX_JOIN_STEP = 20;
+  const AUX_JOIN_STEP = 15;
   const SHARED_START_OFFSET = 3;
   const ONLY_START_OFFSET = 1;
 
@@ -765,7 +876,11 @@ function assignAuxRelativeToBranch(nodes, edges) {
   const AUX_ONLY_EXTRA_Y = 35;
 
   const auxNodes = nodes.filter(n => n.domain === "aux");
-  const mainNodes = nodes.filter(n => n.domain === "main");
+  const mainNodes = nodes.filter(n => n.domain === "main" && !isContainerNode(n));
+  const containerNodes = nodes.filter(n => n.domain === "main" && isContainerNode(n));
+
+  // container 比 aux 再往外一档
+  const CONTAINER_EXTRA_Y = AUX_ONLY_EXTRA_Y + 50;  // aux 是 35，container 是 85
 
   function originalIndex(n) {
     const vals = [];
@@ -790,7 +905,7 @@ function assignAuxRelativeToBranch(nodes, edges) {
     aux._branchDy = 0;
   });
 
-  function assignJoinGroup(group, startOffset, main) {
+  function assignJoinGroup(group, startOffset, main, isContainer = false) {
     const MAX_PER_ROW = 5;
     const rows = chunkArray(group, MAX_PER_ROW);
 
@@ -798,6 +913,20 @@ function assignAuxRelativeToBranch(nodes, edges) {
       row.forEach((joinNode, idx) => {
         const baseOffset = startOffset + idx;
         const joinDx = -baseOffset * AUX_JOIN_STEP;
+        // container 节点没有 chain，直接处理自身
+        if (isContainer) {
+          joinNode._branchAnchorNodeId = main.id;
+          joinNode._branchDx = joinDx;
+
+          if (joinNode.kind === "only_r1") {
+            joinNode._branchDy = -getHalfOffsetForNode(main) - CONTAINER_EXTRA_Y - rowIdx * AUX_ROW_GAP;
+          } else if (joinNode.kind === "only_r2") {
+            joinNode._branchDy = +getHalfOffsetForNode(main) + CONTAINER_EXTRA_Y + rowIdx * AUX_ROW_GAP;
+          } else {
+            joinNode._branchDy = -Y_SHARED_AUX_OFFSET - rowIdx * AUX_ROW_GAP;
+          }
+          return;
+        }
 
         const chainIds = collectAuxChain(joinNode.id, nodeById, inMap);
 
@@ -868,22 +997,36 @@ function assignAuxRelativeToBranch(nodes, edges) {
     assignJoinGroup(r1Join, ONLY_START_OFFSET, main);
     assignJoinGroup(r2Join, ONLY_START_OFFSET, main);
   });
+
+  // ── 处理 container（新增）──
+  // container 节点的 anchor 是它指向的第一个 main 节点
+  const outMap = buildOutMap(edges);
+
+  containerNodes.forEach(containerNode => {
+    // 找这个 container 节点指向的 main 节点作为 anchor
+    const outEdges = outMap.get(containerNode.id) || [];
+    const targetMain = outEdges
+      .map(e => nodeById.get(e.target))
+      .find(n => n && n.domain === "main" && !isContainerNode(n));
+
+    if (!targetMain) return;
+
+    assignJoinGroup([containerNode], ONLY_START_OFFSET, targetMain, true);
+  });
 }
 
 function commitAuxFromBranch(nodes) {
   const nodeById = new Map(nodes.map(n => [n.id, n]));
-  const auxNodes = nodes.filter(n => n.domain === "aux");
 
-  auxNodes.forEach(aux => {
-    const anchorId = aux._branchAnchorNodeId;
-    if (!anchorId) return;
-
-    const anchor = nodeById.get(anchorId);
-    if (!anchor) return;
-
-    aux.x = anchor.x + (aux._branchDx ?? 0);
-    aux.y = anchor.y + (aux._branchDy ?? 0);
-  });
+  // 原来只处理 aux，现在扩展到所有设置了 anchor 的节点（含 container）
+  nodes
+    .filter(n => n._branchAnchorNodeId != null)
+    .forEach(n => {
+      const anchor = nodeById.get(n._branchAnchorNodeId);
+      if (!anchor) return;
+      n.x = anchor.x + (n._branchDx ?? 0);
+      n.y = anchor.y + (n._branchDy ?? 0);
+    });
 }
 
 function fallbackAuxPositions(nodes) {
@@ -1080,222 +1223,1540 @@ function applyRecipeBranchOffsets(nodes, edges, branchInfo) {
   });
 }
 
-function layoutMainNodes(nodes, edges) {
-  const mainNodes = nodes.filter(n => n.domain === "main");
-  const nodeById = new Map(nodes.map(n => [n.id, n]));
+function findBridgeBetweenOnSide(curMain, nextMain, side, edges, nodeById) {
+  const curIdx = side === "R1" ? curMain.r1_node : curMain.r2_node;
+  const nextIdx = side === "R1" ? nextMain.r1_node : nextMain.r2_node;
 
-  const mainEdges = edges.filter(e => {
+  if (curIdx == null || nextIdx == null) return null;
+
+  function hasSide(node) {
+    return side === "R1" ? node.r1_node != null : node.r2_node != null;
+  }
+
+  // 这一侧如果已经有 direct main -> main，就不应该升层
+  const hasDirectMainToMain = edges.some(e => {
+    if (e.source !== curMain.id || e.target !== nextMain.id) return false;
+
     const s = nodeById.get(e.source);
     const t = nodeById.get(e.target);
-    return s && t && s.domain === "main" && t.domain === "main";
+    if (!s || !t) return false;
+    if (s.domain !== "main" || t.domain !== "main") return false;
+
+    return hasSide(s) && hasSide(t);
   });
 
-  const rank = computeNodeRanks(mainNodes, mainEdges);
+  if (hasDirectMainToMain) return null;
 
-  const noOverlap = !hasAnyOverlap(nodes);
+  // 找这一侧真正的 main -> non-main -> main
+  const mids = edges
+    .filter(e => e.source === curMain.id)
+    .map(e => nodeById.get(e.target))
+    .filter(Boolean)
+    .filter(n => n.domain !== "main" && hasSide(n));
 
-  const Y_MAIN_NORMAL = 240;
-  const refMainSpec = nodeVisualSpec({ domain: "main", kind: "merged_similar" });
+  for (const mid of mids) {
+    const hit = edges.some(e => {
+      if (e.source !== mid.id || e.target !== nextMain.id) return false;
+      const t = nodeById.get(e.target);
+      return t && t.domain === "main" && hasSide(t);
+    });
 
-  const Y_R1_MAIN_NORMAL = Y_MAIN_NORMAL - refMainSpec.halfOffset;
-  const Y_R2_MAIN_NORMAL = Y_MAIN_NORMAL + refMainSpec.halfOffset;
+    if (hit) return mid;
+  }
 
-  const Y_R1_MAIN_SEPARATED = 150;
-  const Y_R2_MAIN_SEPARATED = 330;
+  return null;
+}
 
-  mainNodes.forEach(n => {
-    const r = rank.get(n.id) || 0;
-    n.x = 120 + r * 140;
+function getSideIndex(node, side) {
+  if (!node) return Number.MAX_SAFE_INTEGER;
+  return side === "R1"
+    ? Number(node.r1_node ?? Number.MAX_SAFE_INTEGER)
+    : Number(node.r2_node ?? Number.MAX_SAFE_INTEGER);
+}
 
-    if (noOverlap) {
-      if (n.kind === "only_r1") {
-        n.y = Y_R1_MAIN_SEPARATED;
-      } else if (n.kind === "only_r2") {
-        n.y = Y_R2_MAIN_SEPARATED;
-      } else {
-        n.y = 240;
+function nodeHasSide(node, side) {
+  if (!node) return false;
+  return side === "R1" ? node.r1_node != null : node.r2_node != null;
+}
+
+function buildNodeById(nodes) {
+  return new Map(nodes.map(n => [n.id, n]));
+}
+
+function buildOutEdgeMap(edges) {
+  const out = new Map();
+  edges.forEach(e => {
+    if (!out.has(e.source)) out.set(e.source, []);
+    out.get(e.source).push(e);
+  });
+  return out;
+}
+
+function buildInEdgeMap(edges) {
+  const inMap = new Map();
+  edges.forEach(e => {
+    if (!inMap.has(e.target)) inMap.set(e.target, []);
+    inMap.get(e.target).push(e);
+  });
+  return inMap;
+}
+
+function extractMainChainForSide(side, nodes, edges) {
+  const nodeById = buildNodeById(nodes);
+  const outMap = buildOutEdgeMap(edges);
+  const inMap = buildInEdgeMap(edges);
+
+  const mainNodes = nodes
+    .filter(n => n.domain === "main" && nodeHasSide(n, side))
+    .sort((a, b) => getSideIndex(a, side) - getSideIndex(b, side));
+
+  function getDirectMainNext(curMain) {
+    const outs = (outMap.get(curMain.id) || [])
+      .map(e => ({ edge: e, target: nodeById.get(e.target) }))
+      .filter(x => x.target && x.target.domain === "main" && nodeHasSide(x.target, side))
+      .sort((a, b) => getSideIndex(a.target, side) - getSideIndex(b.target, side));
+
+    return outs.length ? outs[0].target : null;
+  }
+
+  function getBridgeMainNext(curMain) {
+    const outs = (outMap.get(curMain.id) || [])
+      .map(e => ({ edge: e, target: nodeById.get(e.target) }))
+      .filter(x => x.target && x.target.domain !== "main" && nodeHasSide(x.target, side))
+      .sort((a, b) => getSideIndex(a.target, side) - getSideIndex(b.target, side));
+
+    for (const item of outs) {
+      const bridge = item.target;
+
+      const out2 = (outMap.get(bridge.id) || [])
+        .map(e => ({ edge: e, target: nodeById.get(e.target) }))
+        .filter(x => x.target && x.target.domain === "main" && nodeHasSide(x.target, side))
+        .sort((a, b) => getSideIndex(a.target, side) - getSideIndex(b.target, side));
+
+      if (out2.length > 0) {
+        return {
+          bridge,
+          nextMain: out2[0].target
+        };
       }
-    } else {
-      if (n.kind === "only_r1") {
-        n.y = Y_R1_MAIN_NORMAL;
-      } else if (n.kind === "only_r2") {
-        n.y = Y_R2_MAIN_NORMAL;
-      } else {
-        n.y = Y_MAIN_NORMAL;
+    }
+
+    return null;
+  }
+
+  // branch 起点：没有同侧 main 前驱
+  const starts = mainNodes.filter(n => {
+    const preds = inMap.get(n.id) || [];
+    return !preds.some(pid => {
+      const p = nodeById.get(pid);
+      return p && p.domain === "main" && nodeHasSide(p, side);
+    });
+  });
+
+  const orderedStarts = starts.length > 0 ? starts : mainNodes;
+
+  const chains = [];
+  const usedMain = new Set();
+  const usedBridge = new Set();
+
+  for (const start of orderedStarts) {
+    if (usedMain.has(start.id)) continue;
+
+    const chain = [];
+    let cur = start;
+
+    while (cur && !usedMain.has(cur.id)) {
+      chain.push({
+        kind: "main",
+        node: cur
+      });
+      usedMain.add(cur.id);
+
+      const directNext = getDirectMainNext(cur);
+      const bridgeSeg = getBridgeMainNext(cur);
+
+      // 关键：
+      // 如果 bridge 指向的 nextMain 在顺序上早于或等于 directNext，
+      // 优先把它当主链 segment
+      if (
+        bridgeSeg &&
+        (
+          !directNext ||
+          getSideIndex(bridgeSeg.nextMain, side) <= getSideIndex(directNext, side)
+        )
+      ) {
+        if (!usedBridge.has(bridgeSeg.bridge.id)) {
+          chain.push({
+            kind: "bridge",
+            bridgeKind: bridgeSeg.bridge.domain, // aux / container
+            node: bridgeSeg.bridge
+          });
+          usedBridge.add(bridgeSeg.bridge.id);
+        }
+
+        cur = bridgeSeg.nextMain;
+        continue;
+      }
+
+      if (directNext && !usedMain.has(directNext.id)) {
+        cur = directNext;
+        continue;
+      }
+
+      break;
+    }
+
+    if (chain.length > 0) {
+      chains.push(chain);
+    }
+  }
+
+  return chains;
+}
+
+function choosePrimarySideByStructure(nodes, edges) {
+  function scoreSide(side) {
+    const chains = extractMainChainForSide(side, nodes, edges);
+
+    let mainChainNodeCount = 0;
+    let bridgeCount = 0;
+
+    chains.forEach(chain => {
+      mainChainNodeCount += chain.length;
+      bridgeCount += chain.filter(seg => seg.kind === "bridge").length;
+    });
+
+    const totalNodeCount = nodes.filter(n => nodeHasSide(n, side)).length;
+
+    return {
+      side,
+      mainChainNodeCount,
+      bridgeCount,
+      totalNodeCount
+    };
+  }
+
+  const s1 = scoreSide("R1");
+  const s2 = scoreSide("R2");
+
+  // 1. 先比主链节点数
+  if (s1.mainChainNodeCount !== s2.mainChainNodeCount) {
+    return s1.mainChainNodeCount > s2.mainChainNodeCount ? "R1" : "R2";
+  }
+
+  // 2. 再比 bridge 数
+  if (s1.bridgeCount !== s2.bridgeCount) {
+    return s1.bridgeCount > s2.bridgeCount ? "R1" : "R2";
+  }
+
+  // 3. 最后才比总节点数
+  if (s1.totalNodeCount !== s2.totalNodeCount) {
+    return s1.totalNodeCount > s2.totalNodeCount ? "R1" : "R2";
+  }
+
+  return "R1";
+}
+
+function layoutPrimarySideMainChain(primarySide, nodes, edges) {
+  const chains = extractMainChainForSide(primarySide, nodes, edges);
+
+  const BASE_Y = 240;
+  const BRANCH_GAP = 220;
+  const LAYER_STEP = 90;
+
+  chains.forEach((chain, branchIdx) => {
+    let currentY = BASE_Y + branchIdx * BRANCH_GAP;
+    const branchBaseY = BASE_Y + branchIdx * BRANCH_GAP;
+
+    for (let i = 0; i < chain.length; i++) {
+      const seg = chain[i];
+
+      if (seg.kind === "main") {
+        seg.node.y = currentY;
+        seg.node.branchBaseY = branchBaseY;
+        continue;
+      }
+
+      if (seg.kind === "bridge") {
+        const prevMain = chain[i - 1]?.kind === "main" ? chain[i - 1].node : null;
+        const nextMain = chain[i + 1]?.kind === "main" ? chain[i + 1].node : null;
+
+        const bridgeY = currentY - LAYER_STEP;
+
+        // x 不再由这里主导；只做保护性修正
+        if (prevMain && nextMain) {
+          seg.node.x = placeBridgeBetweenMains(prevMain, nextMain, 0.4);
+        }
+
+        seg.node.y = bridgeY;
+        seg.node.branchBaseY = branchBaseY;
+
+        // 后续 main 与 bridge 保持同层
+        currentY = bridgeY;
       }
     }
   });
 }
 
-function layoutAuxNodes(nodes, edges) {
-  const { nodeById, outMap, inMap } = buildMaps(nodes, edges);
-  
-  const noOverlap = !hasAnyOverlap(nodes);
-  const AUX_PROCESS_STEP = 45;
+function layoutSecondarySideMainChain(primarySide, nodes, edges) {
+  const secondarySide = primarySide === "R1" ? "R2" : "R1";
+  const chains = extractMainChainForSide(secondarySide, nodes, edges);
 
-  const Y_MAIN = 240;
-  // 正常情况
-  const Y_R1_AUX_NORMAL = 140;
-  const Y_R2_AUX_NORMAL = 340;
-  
-  // 完全不重合时，辅料轨道也一起拉开
-  const Y_R1_AUX_SEPARATED = 95;
-  const Y_R2_AUX_SEPARATED = 385;
+  const BASE_Y = 240;
+  const BRANCH_GAP = 220;
+  const LAYER_STEP = 90;
 
-  const Y_R1_AUX = noOverlap ? Y_R1_AUX_SEPARATED : Y_R1_AUX_NORMAL;
-  const Y_R2_AUX = noOverlap ? Y_R2_AUX_SEPARATED : Y_R2_AUX_NORMAL;
-  const AUX_JOIN_STEP = 20;
-  const SHARED_START_OFFSET = 3;
-  const ONLY_START_OFFSET = 1;
+  chains.forEach((chain, branchIdx) => {
+    const mainItems = chain.filter(seg => seg.kind === "main").map(seg => seg.node);
+    const sharedMainItems = mainItems.filter(n => n.r1_node != null && n.r2_node != null);
 
-  const Y_SHARED_AUX_OFFSET = 20;
-  const AUX_ROW_GAP = 25;
+    const allShared = mainItems.length > 0 && sharedMainItems.length === mainItems.length;
+    const noShared = sharedMainItems.length === 0;
 
-  const auxNodes = nodes.filter(n => n.domain === "aux");
-  const mainNodes = nodes.filter(n => n.domain === "main");
+    // 情况 A：这条 secondary chain 全是 shared
+    // 说明位置已经由 primary 决定，这里不再重排
+    if (allShared) {
+      return;
+    }
 
-  function originalIndex(n) {
-    const vals = [];
-    if (n?.r1_node != null) vals.push(Number(n.r1_node));
-    if (n?.r2_node != null) vals.push(Number(n.r2_node));
-    if (vals.length === 0) return Number.MAX_SAFE_INTEGER;
-    return Math.min(...vals);
-  }
+    const branchBaseY = BASE_Y + branchIdx * BRANCH_GAP;
 
-  function chunkArray(arr, chunkSize) {
-  const result = [];
-  for (let i = 0; i < arr.length; i += chunkSize) {
-    result.push(arr.slice(i, i + chunkSize));
-  }
-  return result;
+    // 情况 C：完全没有 shared，当独立副轴链处理
+    if (noShared) {
+      let currentY = branchBaseY;
+
+      for (let i = 0; i < chain.length; i++) {
+        const seg = chain[i];
+
+        if (seg.kind === "main") {
+          if (seg.node.y == null || Number.isNaN(seg.node.y)) {
+            seg.node.y = currentY;
+          }
+          seg.node.branchBaseY = branchBaseY;
+          continue;
+        }
+
+        if (seg.kind === "bridge") {
+          const prevMain = chain[i - 1]?.kind === "main" ? chain[i - 1].node : null;
+          const nextMain = chain[i + 1]?.kind === "main" ? chain[i + 1].node : null;
+
+          const bridgeY = currentY - LAYER_STEP;
+
+          if (prevMain && nextMain) {
+            seg.node.x = placeBridgeBetweenMains(prevMain, nextMain, 0.4);
+          }
+
+          seg.node.y = bridgeY;
+          seg.node.branchBaseY = branchBaseY;
+
+          // 后续 main 与 bridge 同层
+          currentY = bridgeY;
+        }
+      }
+
+      return;
+    }
+
+    // 情况 B：部分 shared、部分 only
+    // x 已经在 assignAllNodeXByPrimaryRecipe() 里处理好了
+    // 这里只处理 y / 升层
+    let currentY = branchBaseY;
+
+    for (let i = 0; i < chain.length; i++) {
+      const seg = chain[i];
+
+      if (seg.kind === "main") {
+        // shared main 如果已有 y，就保留；only main 没有则补
+        if (seg.node.y == null || Number.isNaN(seg.node.y)) {
+          seg.node.y = currentY;
+        }
+        seg.node.branchBaseY = branchBaseY;
+        continue;
+      }
+
+      if (seg.kind === "bridge") {
+        const prevMain = chain[i - 1]?.kind === "main" ? chain[i - 1].node : null;
+        const nextMain = chain[i + 1]?.kind === "main" ? chain[i + 1].node : null;
+
+        const bridgeY = currentY - LAYER_STEP;
+
+        if (prevMain && nextMain) {
+          seg.node.x = placeBridgeBetweenMains(prevMain, nextMain, 0.4);
+        }
+
+        seg.node.y = bridgeY;
+        seg.node.branchBaseY = branchBaseY;
+
+        // 后续 main 与 bridge 同层
+        currentY = bridgeY;
+      }
+    }
+  });
 }
 
-  function assignJoinGroup(group, startOffset, main) {
-  const MAX_PER_ROW = 5;
-  const rows = chunkArray(group, MAX_PER_ROW);
+function nodeOrderIndex(node) {
+  const vals = [];
+  if (node.r1_node != null) vals.push(Number(node.r1_node));
+  if (node.r2_node != null) vals.push(Number(node.r2_node));
+  return vals.length ? Math.min(...vals) : Number.MAX_SAFE_INTEGER;
+}
 
-  rows.forEach((row, rowIdx) => {
-    row.forEach((joinNode, idx) => {
-      const baseOffset = startOffset + idx;
-      const baseX = main.x - baseOffset * AUX_JOIN_STEP;
+function isMainBridgeNode(node, edges, nodeById) {
+  if (!node) return false;
+  if (node.domain === "main") return false;
 
-      const chain = collectAuxChain(joinNode.id, nodeById, inMap)
-        .map(id => nodeById.get(id))
-        .filter(n => n && n.domain === "aux");
+  const inEdges = edges.filter(e => e.target === node.id);
+  const outEdges = edges.filter(e => e.source === node.id);
 
-      const fullChain = [...chain, joinNode];
+  const hasMainIn = inEdges.some(e => {
+    const s = nodeById.get(e.source);
+    return s && s.domain === "main";
+  });
 
-      const seen = new Set();
-      const uniqueChain = fullChain.filter(n => {
-        if (!n || seen.has(n.id)) return false;
-        seen.add(n.id);
-        return true;
+  const hasMainOut = outEdges.some(e => {
+    const t = nodeById.get(e.target);
+    return t && t.domain === "main";
+  });
+
+  return hasMainIn && hasMainOut;
+}
+
+function getNextMainSegment(mainNode, edges, nodeById) {
+  const outEdges = edges.filter(e => e.source === mainNode.id);
+
+  // 1) main -> main
+  for (const e of outEdges) {
+    const t = nodeById.get(e.target);
+    if (t && t.domain === "main") {
+      return {
+        type: "main-main",
+        nextMain: t,
+        bridge: null,
+        edge: e
+      };
+    }
+  }
+
+  // 2) main -> aux/container -> main
+  for (const e1 of outEdges) {
+    const mid = nodeById.get(e1.target);
+    if (!mid || mid.domain === "main") continue;
+
+    const out2 = edges.filter(e => e.source === mid.id);
+    for (const e2 of out2) {
+      const t = nodeById.get(e2.target);
+      if (t && t.domain === "main") {
+        return {
+          type: "main-bridge-main",
+          nextMain: t,
+          bridge: mid,
+          edge1: e1,
+          edge2: e2
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function collectMainBackbone(nodes, edges) {
+  const nodeById = buildNodeById(nodes);
+  const mains = sortByOriginalIndex(
+    nodes.filter(n => n.domain === "main")
+  );
+
+  const backbone = [];
+  const used = new Set();
+
+  for (const m of mains) {
+    if (used.has(m.id)) continue;
+
+    backbone.push(m);
+    used.add(m.id);
+
+    let cur = m;
+    while (true) {
+      const seg = getNextMainSegment(cur, edges, nodeById);
+      if (!seg || !seg.nextMain || used.has(seg.nextMain.id)) break;
+
+      if (seg.bridge && !used.has(seg.bridge.id)) {
+        backbone.push(seg.bridge);
+        used.add(seg.bridge.id);
+      }
+
+      if (!used.has(seg.nextMain.id)) {
+        backbone.push(seg.nextMain);
+        used.add(seg.nextMain.id);
+      }
+
+      cur = seg.nextMain;
+    }
+  }
+
+  return backbone;
+}
+
+function layoutMainBackboneStepped(backbone) {
+  const MAIN_GAP = 150;
+  const BRIDGE_GAP = 70;
+  const LAYER_STEP = 90;
+  const BASE_X = 120;
+  const BASE_Y = 240;
+
+  let currentX = BASE_X;
+  let currentY = BASE_Y;
+
+  for (let i = 0; i < backbone.length; i++) {
+    const node = backbone[i];
+
+    if (node.domain === "main") {
+      node.x = currentX;
+      node.y = currentY;
+      currentX += MAIN_GAP;
+      continue;
+    }
+
+    // bridge aux / container
+    node.x = currentX - (MAIN_GAP - BRIDGE_GAP);
+    node.y = currentY + LAYER_STEP;
+
+    // 后续主链 main 切换到新的 y
+    currentY += LAYER_STEP;
+  }
+}
+
+function applyBranchBaseOffsets(nodes, branchInfo) {
+  const BRANCH_GAP = 220;
+
+  // 先按最小原始 index 排
+  const mains = nodes
+    .filter(n => n.domain === "main")
+    .sort((a, b) => nodeOrderIndex(a) - nodeOrderIndex(b));
+
+  mains.forEach((n, i) => {
+    const offset = i * 0; // 先不按 main 单独分，branchInfo 真正接入后再扩
+    if (n.y != null) n.y += offset;
+  });
+}
+
+function originalIndex(node) {
+  const vals = [];
+  if (node?.r1_node != null) vals.push(Number(node.r1_node));
+  if (node?.r2_node != null) vals.push(Number(node.r2_node));
+  if (vals.length === 0) return Number.MAX_SAFE_INTEGER;
+  return Math.min(...vals);
+}
+
+function sortByOriginalIndex(arr) {
+  return [...arr].sort((a, b) => originalIndex(a) - originalIndex(b));
+}
+
+function buildInEdgeMap(edges) {
+  const inMap = new Map();
+  edges.forEach(e => {
+    if (!inMap.has(e.target)) inMap.set(e.target, []);
+    inMap.get(e.target).push(e);
+  });
+  return inMap;
+}
+
+function buildNodeById(nodes) {
+  return new Map(nodes.map(n => [n.id, n]));
+}
+
+function isBridgeNode(node, edges, nodeById) {
+  if (!node || node.domain === "main") return false;
+
+  const inEdges = edges.filter(e => e.target === node.id);
+  const outEdges = edges.filter(e => e.source === node.id);
+
+  const hasMainIn = inEdges.some(e => {
+    const s = nodeById.get(e.source);
+    return s && s.domain === "main";
+  });
+
+  const hasMainOut = outEdges.some(e => {
+    const t = nodeById.get(e.target);
+    return t && t.domain === "main";
+  });
+
+  return hasMainIn && hasMainOut;
+}
+
+function getNextMainSegment(mainNode, edges, nodeById) {
+  const outEdges = edges
+    .filter(e => e.source === mainNode.id)
+    .sort((a, b) => {
+      const ta = nodeById.get(a.target);
+      const tb = nodeById.get(b.target);
+      return originalIndex(ta) - originalIndex(tb);
+    });
+
+  // 1) main -> main
+  for (const e of outEdges) {
+    const t = nodeById.get(e.target);
+    if (t && t.domain === "main") {
+      return {
+        type: "main-main",
+        nextMain: t,
+        bridge: null,
+        edge: e
+      };
+    }
+  }
+
+  // 2) main -> aux/container -> main
+  for (const e1 of outEdges) {
+    const mid = nodeById.get(e1.target);
+    if (!mid || mid.domain === "main") continue;
+
+    const out2 = edges
+      .filter(e => e.source === mid.id)
+      .sort((a, b) => {
+        const ta = nodeById.get(a.target);
+        const tb = nodeById.get(b.target);
+        return originalIndex(ta) - originalIndex(tb);
       });
 
-      uniqueChain.sort((a, b) => originalIndex(a) - originalIndex(b));
+    for (const e2 of out2) {
+      const t = nodeById.get(e2.target);
+      if (t && t.domain === "main") {
+        return {
+          type: "main-bridge-main",
+          nextMain: t,
+          bridge: mid,
+          edge1: e1,
+          edge2: e2
+        };
+      }
+    }
+  }
 
-      uniqueChain.forEach((aux, i) => {
-        const distToJoin = uniqueChain.length - 1 - i;
-        aux.x = baseX - distToJoin * AUX_PROCESS_STEP;
+  return null;
+}
 
-        if (aux.kind === "only_r1") {
-          aux.y = Y_R1_AUX - rowIdx * AUX_ROW_GAP;
-        } else if (aux.kind === "only_r2") {
-          aux.y = Y_R2_AUX + rowIdx * AUX_ROW_GAP;
+function collectBackboneNonMainNodes(nodes) {
+  return sortByOriginalIndex(
+    nodes.filter(n => n.domain !== "main" && n.x != null && n.y != null)
+  );
+}
+
+function layoutNonMainUpstreamRecursively(nodes, edges) {
+  const nodeById = buildNodeById(nodes);
+  const inMap = buildInEdgeMap(edges);
+
+  const ADD_DX = 34;
+  const PROCESS_DX = 80;
+
+  // add 三条固定轨道
+  const ADD_Y_R1 = -36;
+  const ADD_Y_SHARED = -18;
+  const ADD_Y_R2 = 36;
+
+  function isPlaced(n) {
+    return n && n.x != null && n.y != null && !Number.isNaN(n.x) && !Number.isNaN(n.y);
+  }
+
+  function placeParents(curNode, visited = new Set()) {
+    if (!curNode) return;
+    if (visited.has(curNode.id)) return;
+    visited.add(curNode.id);
+
+    const parentItems = (inMap.get(curNode.id) || [])
+      .map(e => ({ edge: e, node: nodeById.get(e.source) }))
+      .filter(x => x.node && x.node.domain !== "main") // 上游继续排除 main
+      .sort((a, b) => originalIndex(a.node) - originalIndex(b.node));
+
+    let addIdxR1 = 0;
+    let addIdxShared = 0;
+    let addIdxR2 = 0;
+    let processIdx = 0;
+
+    for (const item of parentItems) {
+      const parent = item.node;
+      const edge = item.edge;
+
+      if (isAddEdge(edge)) {
+        // add 节点总是按轨道重排
+        if (parent.kind === "only_r1") {
+          parent.x = curNode.x - ADD_DX - addIdxR1 * ADD_DX;
+          parent.y = curNode.y + ADD_Y_R1;
+          addIdxR1 += 1;
+
+        } else if (parent.kind === "only_r2") {
+          parent.x = curNode.x - ADD_DX - addIdxR2 * ADD_DX;
+          parent.y = curNode.y + ADD_Y_R2;
+          addIdxR2 += 1;
+
         } else {
-          aux.y = Y_MAIN - Y_SHARED_AUX_OFFSET - rowIdx * AUX_ROW_GAP;
+          parent.x = curNode.x - ADD_DX - addIdxShared * ADD_DX;
+          parent.y = curNode.y + ADD_Y_SHARED;
+          addIdxShared += 1;
         }
+
+      } else {
+        // process 节点：只在还没摆过时补位置
+        if (!isPlaced(parent)) {
+          parent.x = curNode.x - PROCESS_DX - processIdx * PROCESS_DX;
+          parent.y = curNode.y;
+          processIdx += 1;
+        }
+      }
+
+      // 继续递归它的上游
+      placeParents(parent, visited);
+    }
+  }
+
+  // 关键：
+  // seed 用“已经有坐标的主链节点”
+  // 包括 main 和主链上的 bridge aux/container
+  const seeds = sortByOriginalIndex(
+    nodes.filter(n => isPlaced(n))
+  );
+
+  seeds.forEach(seed => placeParents(seed, new Set()));
+}
+
+function alignProcessChainsHorizontally(nodes, edges) {
+  const nodeById = new Map(nodes.map(n => [n.id, n]));
+  const outMap = buildOutMap(edges);
+  const inMap = buildInEdgeMap(edges);
+
+  function isStartNode(node) {
+    if (!node || node.domain !== "main") return false;
+
+    const preds = inMap.get(node.id) || [];
+    return !preds.some(e => {
+      const p = nodeById.get(e.source);
+      return p && p.domain === "main";
+    });
+  }
+
+  function chooseProcessNext(node) {
+    const outs = (outMap.get(node.id) || [])
+      .filter(e => isProcessEdge(e))
+      .map(e => ({ edge: e, target: nodeById.get(e.target) }))
+      .filter(x => x.target)
+      .sort((a, b) => {
+        const ai = Math.min(
+          Number(a.target.r1_node ?? 999999),
+          Number(a.target.r2_node ?? 999999)
+        );
+        const bi = Math.min(
+          Number(b.target.r1_node ?? 999999),
+          Number(b.target.r2_node ?? 999999)
+        );
+        return ai - bi;
       });
+
+    return outs.length ? outs[0].target : null;
+  }
+
+  const starts = nodes
+    .filter(isStartNode)
+    .sort((a, b) => {
+      const ai = Math.min(
+        Number(a.r1_node ?? 999999),
+        Number(a.r2_node ?? 999999)
+      );
+      const bi = Math.min(
+        Number(b.r1_node ?? 999999),
+        Number(b.r2_node ?? 999999)
+      );
+      return ai - bi;
+    });
+
+  const visited = new Set();
+
+  starts.forEach(start => {
+    const baseY = start.y;
+    let cur = start;
+
+    while (cur && !visited.has(cur.id)) {
+      visited.add(cur.id);
+
+      // 只把当前 process 主链节点拉回同一水平线
+      cur.y = baseY;
+
+      const next = chooseProcessNext(cur);
+      if (!next) break;
+
+      // 如果 next 是 process 主链节点，也拉平
+      next.y = baseY;
+      cur = next;
+    }
+  });
+}
+
+function softenAddSlopes(nodes, edges) {
+  const nodeById = new Map(nodes.map(n => [n.id, n]));
+
+  edges.forEach(e => {
+    if (!isAddEdge(e)) return;
+
+    const s = nodeById.get(e.source);
+    const t = nodeById.get(e.target);
+    if (!s || !t) return;
+
+    // 如果已经很接近，就直接拉平
+    if (Math.abs(s.y - t.y) <= 20) {
+      s.y = t.y;
+    }
+  });
+}
+
+function placeBridgeBetweenMains(prevMain, nextMain, bias = 0.4) {
+  const left = Math.min(prevMain.x, nextMain.x);
+  const right = Math.max(prevMain.x, nextMain.x);
+  const PAD = 8;
+  const x = left + (right - left) * bias;
+  return Math.max(left + PAD, Math.min(right - PAD, x));
+}
+
+function choosePrimarySideByAllNodes(nodes) {
+  const countR1 = nodes.filter(n => n.r1_node != null).length;
+  const countR2 = nodes.filter(n => n.r2_node != null).length;
+  return countR1 >= countR2 ? "R1" : "R2";
+}
+
+function sideNodeIndex(node, side) {
+  if (!node) return Number.MAX_SAFE_INTEGER;
+  if (side === "R1") return Number(node.r1_node ?? Number.MAX_SAFE_INTEGER);
+  if (side === "R2") return Number(node.r2_node ?? Number.MAX_SAFE_INTEGER);
+  return Number.MAX_SAFE_INTEGER;
+}
+
+function assignPrimaryAllNodeX(primarySide, nodes, edges) {
+  const backbone = getPrimaryBackboneNodes(primarySide, nodes, edges);
+  const backboneIds = new Set(backbone.map(n => n.id));
+
+  // 先按 branch 内 backbone 均匀排
+  assignPrimaryBackboneX(primarySide, nodes, edges);
+
+  const ordered = nodes
+    .filter(n => nodeHasSide(n, primarySide))
+    .sort((a, b) => getSideIndex(a, primarySide) - getSideIndex(b, primarySide));
+
+  const X_GAP = 140;
+
+  let i = 0;
+  while (i < ordered.length) {
+    if (backboneIds.has(ordered[i].id)) {
+      i += 1;
+      continue;
+    }
+
+    const start = i;
+    while (i < ordered.length && !backboneIds.has(ordered[i].id)) i++;
+    const block = ordered.slice(start, i);
+
+    const leftAnchor = start - 1 >= 0 ? ordered[start - 1] : null;
+    const rightAnchor = i < ordered.length ? ordered[i] : null;
+
+    const leftX = leftAnchor && leftAnchor.x != null ? leftAnchor.x : null;
+    const rightX = rightAnchor && rightAnchor.x != null ? rightAnchor.x : null;
+
+    if (leftX != null && rightX != null) {
+      const step = (rightX - leftX) / (block.length + 1);
+      block.forEach((n, idx) => {
+        n.x = leftX + step * (idx + 1);
+      });
+    } else if (leftX != null && rightX == null) {
+      block.forEach((n, idx) => {
+        n.x = leftX + X_GAP * (idx + 1);
+      });
+    } else if (leftX == null && rightX != null) {
+      block.forEach((n, idx) => {
+        n.x = rightX - X_GAP * (block.length - idx);
+      });
+    } else {
+      block.forEach((n, idx) => {
+        n.x = 120 + idx * X_GAP;
+      });
+    }
+  }
+}
+
+function insertSecondaryOnlyNodesByAllNodeOrder(primarySide, nodes) {
+  const secondarySide = primarySide === "R1" ? "R2" : "R1";
+  const X_GAP = 140;
+  const BASE_X = 120;
+
+  const ordered = nodes
+    .filter(n => nodeHasSide(n, secondarySide))
+    .sort((a, b) => getSideIndex(a, secondarySide) - getSideIndex(b, secondarySide));
+
+  let i = 0;
+  while (i < ordered.length) {
+    if (isShareNode(ordered[i])) {
+      i += 1;
+      continue;
+    }
+
+    const start = i;
+    while (i < ordered.length && !isShareNode(ordered[i])) i++;
+    const block = ordered.slice(start, i);
+
+    const leftShared = start - 1 >= 0 ? ordered[start - 1] : null;
+    const rightShared = i < ordered.length ? ordered[i] : null;
+
+    const leftX = leftShared && leftShared.x != null ? leftShared.x : null;
+    const rightX = rightShared && rightShared.x != null ? rightShared.x : null;
+
+    if (leftX != null && rightX != null) {
+      const step = (rightX - leftX) / (block.length + 1);
+      block.forEach((n, idx) => {
+        n.x = leftX + step * (idx + 1);
+      });
+    } else if (leftX != null && rightX == null) {
+      block.forEach((n, idx) => {
+        n.x = leftX + X_GAP * (idx + 1);
+      });
+    } else if (leftX == null && rightX != null) {
+      block.forEach((n, idx) => {
+        n.x = rightX - X_GAP * (block.length - idx);
+      });
+    } else {
+      block.forEach((n, idx) => {
+        n.x = BASE_X + X_GAP * idx;
+      });
+    }
+  }
+}
+
+function enforceSideMonotonicXByChains(nodes, edges, side, gap = 140) {
+  const chains = extractMainChainForSide(side, nodes, edges);
+
+  chains.forEach(chain => {
+    const chainNodes = chain
+      .map(seg => seg.node)
+      .filter(Boolean)
+      .sort((a, b) => getSideIndex(a, side) - getSideIndex(b, side));
+
+    for (let i = 1; i < chainNodes.length; i++) {
+      if (chainNodes[i].x <= chainNodes[i - 1].x) {
+        chainNodes[i].x = chainNodes[i - 1].x + gap;
+      }
+    }
+  });
+}
+
+function enforceBridgeXBetweenSourceTarget(nodes, edges) {
+  const nodeById = buildNodeById(nodes);
+  const outMap = buildOutEdgeMap(edges);
+
+  function findNextMainFromBridge(bridge) {
+    const outs = outMap.get(bridge.id) || [];
+    const nextMain = outs
+      .map(e => nodeById.get(e.target))
+      .find(n => n && n.domain === "main");
+    return nextMain || null;
+  }
+
+  nodes.forEach(node => {
+    if (!node || node.domain === "main") return;
+
+    const incoming = edges
+      .filter(e => e.target === node.id)
+      .map(e => nodeById.get(e.source))
+      .filter(n => n && n.domain === "main");
+
+    if (incoming.length === 0) return;
+
+    const prevMain = incoming.sort((a, b) => a.x - b.x)[0];
+    const nextMain = findNextMainFromBridge(node);
+
+    if (prevMain && nextMain && prevMain.x != null && nextMain.x != null) {
+      node.x = placeBridgeBetweenMains(prevMain, nextMain, 0.4);
+    }
+  });
+}
+
+
+function applySeparateRecipeOffset(nodes, graph) {
+  if (!graph.separate_layout) return;
+
+  const GAP = 200;
+
+  for (const n of nodes) {
+    const hasR1 = n.r1_node != null;
+    const hasR2 = n.r2_node != null;
+
+    // 只属于 R2 的节点整体往下挪
+    if (hasR2 && !hasR1) {
+      n.y += GAP;
+    }
+  }
+}
+
+function getPrimaryBackboneNodes(primarySide, nodes, edges) {
+  const chains = extractMainChainForSide(primarySide, nodes, edges);
+  const backbone = [];
+
+  chains.forEach(chain => {
+    chain.forEach(seg => {
+      if (seg?.node) backbone.push(seg.node);
+    });
+  });
+
+  const seen = new Set();
+  return backbone.filter(n => {
+    if (!n || seen.has(n.id)) return false;
+    seen.add(n.id);
+    return true;
+  });
+}
+
+function assignPrimaryBackboneX(primarySide, nodes, edges) {
+  const chains = extractMainChainForSide(primarySide, nodes, edges);
+
+  const BASE_X = 120;
+  const BACKBONE_GAP = 180;
+  const BRANCH_START_OFFSET = 22; // 不同 branch 只轻微错开起点
+
+  chains.forEach((chain, branchIdx) => {
+    const branchNodes = chain
+      .map(seg => seg.node)
+      .filter(Boolean)
+      .sort((a, b) => getSideIndex(a, primarySide) - getSideIndex(b, primarySide));
+
+    const startX = BASE_X + branchIdx * BRANCH_START_OFFSET;
+
+    branchNodes.forEach((n, i) => {
+      n.x = startX + i * BACKBONE_GAP;
     });
   });
 }
 
-  mainNodes.forEach(main => {
-    const preds = inMap.get(main.id) || [];
+function assignAllNodeXByPrimaryRecipe(nodes, edges) {
+  const primarySide = choosePrimarySideByStructure(nodes, edges);
 
-    const joinAux = preds
-      .map(pid => nodeById.get(pid))
-      .filter(n => n && n.domain === "aux");
-
-    const sharedJoin = joinAux
-      .filter(n => n.kind === "merged_exact")
-      .sort((a, b) => originalIndex(a) - originalIndex(b));
-
-    const r1Join = joinAux
-      .filter(n => n.kind === "only_r1")
-      .sort((a, b) => Number(a.r1_node ?? 999999) - Number(b.r1_node ?? 999999));
-
-    const r2Join = joinAux
-      .filter(n => n.kind === "only_r2")
-      .sort((a, b) => Number(a.r2_node ?? 999999) - Number(b.r2_node ?? 999999));
-
-    assignJoinGroup(sharedJoin, SHARED_START_OFFSET, main);
-    assignJoinGroup(r1Join, ONLY_START_OFFSET, main);
-    assignJoinGroup(r2Join, ONLY_START_OFFSET, main);
+  nodes.forEach(n => {
+    n.x = null;
   });
 
-  auxNodes.forEach((aux, i) => {
-    if (aux.x == null || Number.isNaN(aux.x)) {
-      aux.x = 80 + i * AUX_JOIN_STEP;
+  assignPrimaryAllNodeX(primarySide, nodes, edges);
+  insertSecondaryOnlyNodesByAllNodeOrder(primarySide, nodes);
 
-      if (aux.kind === "only_r1") aux.y = Y_R1_AUX;
-      else if (aux.kind === "only_r2") aux.y = Y_R2_AUX;
-      else aux.y = Y_MAIN;
-    }
-  });
-}
+  enforceSideMonotonicXByChains(nodes, edges, "R1");
+  enforceSideMonotonicXByChains(nodes, edges, "R2");
+  enforceBridgeXBetweenSourceTarget(nodes, edges);
 
-function layoutNodes(nodes, edges) {
-  layoutMainNodes(nodes, edges);
-  layoutAuxNodes(nodes, edges);
-}
-
-function hasAnyOverlap(nodes) {
-  return nodes.some(n =>
-    n.kind === "merged_exact" || n.kind === "merged_similar"
-  );
+  return primarySide;
 }
 
 function applySeparateRecipeOffset(nodes, graph) {
-
   if (!graph.separate_layout) return;
 
-  const GAP = 200;   // 两个 recipe 的竖直间距
+  const GAP = 200;
 
   for (const n of nodes) {
+    const hasR1 = n.r1_node != null;
+    const hasR2 = n.r2_node != null;
 
-    const r1 = n.r1_node != null;
-    const r2 = n.r2_node != null;
-
-    if (r2 && !r1) {
+    // 只属于 R2 的节点整体往下挪
+    if (hasR2 && !hasR1) {
       n.y += GAP;
     }
+  }
+}
 
+function hasRealContainerName(v) {
+  return v != null && String(v).trim().toLowerCase() !== "none" && String(v).trim() !== "";
+}
+
+function isContainerLikeAuxNode(node) {
+  if (!node) return false;
+  return node.domain === "aux" && (
+    hasRealContainerName(node.container_r1) ||
+    hasRealContainerName(node.container_r2)
+  );
+}
+
+// ============================================================
+//  NEW BRANCH LAYOUT ENGINE
+//  Replaces: assignAllNodeXByPrimaryRecipe, layoutPrimarySideMainChain,
+//            layoutSecondarySideMainChain, applyRecipeBranchOffsets,
+//            assignAuxRelativeToBranch, commitAuxFromBranch,
+//            layoutNonMainUpstreamRecursively, alignProcessChainsHorizontally,
+//            fallbackAuxPositions, enforceSideMonotonicXByChains,
+//            enforceBridgeXBetweenSourceTarget, insertSecondaryOnlyNodesByAllNodeOrder,
+//            assignPrimaryAllNodeX, assignPrimaryBackboneX, getPrimaryBackboneNodes,
+//            relayoutSubtreeXBySide, commitCandidateX, applyRecipeBranchOffsets,
+//            alignOnlyNodesToDumbbell, propagateOnlyChainY, findNearestDumbbellOnSide,
+//            spreadNonShareTargetsInternally, computeBranchAxisTargets,
+//            propagateAxisYBySide, initializeAxisY, applyNodeYFromAxis
+// ============================================================
+ 
+// ─────────────────────────────────────────────
+// § 1  Graph traversal helpers (self-contained)
+// ─────────────────────────────────────────────
+ 
+function nb_buildNodeById(nodes) {
+  return new Map(nodes.map(n => [n.id, n]));
+}
+ 
+function nb_buildOutMap(edges) {
+  const m = new Map();
+  edges.forEach(e => {
+    if (!m.has(e.source)) m.set(e.source, []);
+    m.get(e.source).push(e);
+  });
+  return m;
+}
+ 
+function nb_buildInMap(edges) {
+  const m = new Map();
+  edges.forEach(e => {
+    if (!m.has(e.target)) m.set(e.target, []);
+    m.get(e.target).push(e);
+  });
+  return m;
+}
+ 
+// Minimum recipe-order index of a node
+function nb_nodeIdx(node) {
+  const vals = [];
+  if (node?.r1_node != null) vals.push(Number(node.r1_node));
+  if (node?.r2_node != null) vals.push(Number(node.r2_node));
+  return vals.length ? Math.min(...vals) : Number.MAX_SAFE_INTEGER;
+}
+ 
+function nb_isMain(node) {
+  return node && node.domain === "main" && !isContainerNode(node);
+}
+ 
+function nb_isContainer(node) {
+  return node && isContainerNode(node);
+}
+ 
+function nb_isAux(node) {
+  return node && node.domain === "aux";
+}
+ 
+// Process-edge predecessor ids of a node (excludes add-edges)
+function nb_processParents(nodeId, inMap, nodeById) {
+  return (inMap.get(nodeId) || [])
+    .filter(e => !isAddEdge(e))
+    .map(e => nodeById.get(e.source))
+    .filter(Boolean);
+}
+ 
+// Process-edge successor ids of a node
+function nb_processChildren(nodeId, outMap, nodeById) {
+  return (outMap.get(nodeId) || [])
+    .filter(e => !isAddEdge(e))
+    .map(e => nodeById.get(e.target))
+    .filter(Boolean);
+}
+ 
+// Add-edge sources feeding into a node
+function nb_addSources(nodeId, inMap, nodeById) {
+  return (inMap.get(nodeId) || [])
+    .filter(e => isAddEdge(e))
+    .map(e => nodeById.get(e.source))
+    .filter(Boolean);
+}
+ 
+// ─────────────────────────────────────────────
+// § 2  Branch detection
+// ─────────────────────────────────────────────
+ 
+/*
+  BRANCH TYPE 1 – "Main-led"
+  ───────────────────────────
+  Anchor: a single main node (or a merged_exact/merged_similar that
+  functions as one unique main ingredient).
+  Spine: that main node  +  any container nodes reachable by process
+         edges whose process-predecessor is that main (or another
+         container already in the spine), with node indices always
+         increasing along the chain.
+  Rule: a container node is only included if its direct process-parent
+        is already in the spine (no orphaned containers).
+ 
+  BRANCH TYPE 2 – "Container-led"
+  ────────────────────────────────
+  Spine: a chain of container nodes where the FIRST node in the chain
+         has NO main-node process-predecessor (i.e. it starts "cold").
+  The chain follows process edges between containers, indices increasing.
+ 
+  De-duplication: if a container node appears in a Type-1 branch,
+  remove it from any Type-2 branch.
+*/
+
+function sameIngredient(a, b) {
+  const getName = n => {
+    const s = n.state_r1 || n.state_r2;
+    return s ? String(s[0]).toLowerCase().trim() : null;
+  };
+
+  return getName(a) && getName(a) === getName(b);
+}
+
+function nb_detectBranches(nodes, edges) {
+  const nodeById = nb_buildNodeById(nodes);
+  const outMap   = nb_buildOutMap(edges);
+  const inMap    = nb_buildInMap(edges);
+
+  const branches = [];
+  const used = new Set();
+
+  function isMainLike(n) {
+    return nb_isMain(n) || nb_isContainer(n);
   }
 
+  function getProcessChildren(node) {
+    return (outMap.get(node.id) || [])
+      .filter(e => !isAddEdge(e))
+      .map(e => nodeById.get(e.target))
+      .filter(Boolean);
+  }
+
+  function getProcessParents(node) {
+    return (inMap.get(node.id) || [])
+      .filter(e => !isAddEdge(e))
+      .map(e => nodeById.get(e.source))
+      .filter(Boolean);
+  }
+
+  // ⭐⭐⭐ 核心新增：flow continuity 判断
+  function isSameFlow(prevNode, nextNode) {
+    if (!prevNode || !nextNode) return false;
+
+    // 1️⃣ 必须是唯一 child（不能分叉）
+    const children = getProcessChildren(prevNode)
+      .filter(isMainLike);
+
+    if (children.length !== 1) return false;
+    if (children[0].id !== nextNode.id) return false;
+
+    // 2️⃣ next 不能有多个 main/container parent（避免 merge）
+    const parents = getProcessParents(nextNode)
+      .filter(isMainLike);
+
+    if (parents.length > 1) return false;
+
+    return true;
+  }
+
+  // ─────────────────────────────────────────────
+  // STEP 1: 主链构建（允许 name 变化）
+  // ─────────────────────────────────────────────
+  const mainLikeNodes = nodes
+    .filter(isMainLike)
+    .sort((a, b) => nb_nodeIdx(a) - nb_nodeIdx(b));
+
+  mainLikeNodes.forEach(start => {
+    if (used.has(start.id)) return;
+
+    const spine = [start];
+    used.add(start.id);
+
+    let cur = start;
+
+    while (true) {
+      const children = getProcessChildren(cur)
+        .filter(isMainLike)
+        .sort((a, b) => nb_nodeIdx(a) - nb_nodeIdx(b));
+
+      if (children.length !== 1) break;
+
+      const next = children[0];
+
+      // ⭐⭐⭐ 关键：flow continuity 判断
+      if (!sameIngredient(cur, next) && !isSameFlow(cur, next)) break;
+
+      spine.push(next);
+      used.add(next.id);
+
+      cur = next;
+    }
+
+    branches.push({
+      type: 1,
+      spine,
+      index: null
+    });
+  });
+
+  // ─────────────────────────────────────────────
+  // STEP 2: container-only branch（无 upstream main）
+  // ─────────────────────────────────────────────
+  nodes.forEach(n => {
+    if (!nb_isContainer(n)) return;
+    if (used.has(n.id)) return;
+
+    const parents = getProcessParents(n);
+    const hasMainUpstream = parents.some(nb_isMain);
+
+    if (!hasMainUpstream) {
+      used.add(n.id);
+      branches.push({
+        type: 2,
+        spine: [n],
+        index: null
+      });
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // STEP 3: 排序 branch（top → bottom）
+  // ─────────────────────────────────────────────
+  branches.sort((a, b) =>
+    nb_nodeIdx(a.spine[0]) - nb_nodeIdx(b.spine[0])
+  );
+
+  branches.forEach((b, i) => {
+    b.index = i;
+
+    // 保证 branch 内 left → right
+    b.spine.sort((x, y) => nb_nodeIdx(x) - nb_nodeIdx(y));
+  });
+
+  return branches;
+}
+ 
+// ─────────────────────────────────────────────
+// § 3  Aux attachment
+// ─────────────────────────────────────────────
+ 
+/*
+  For each spine node (main or container), collect all aux nodes
+  that reach it via add-edges (direct or chained through other aux).
+  Also collect aux nodes that are process-parents of spine nodes
+  but are NOT spine nodes themselves.
+*/
+ 
+function nb_collectAuxForSpineNode(spineNodeId, inMap, nodeById, spineSet) {
+  const result = [];
+  const visited = new Set();
+ 
+  function dfs(id) {
+    if (visited.has(id)) return;
+    visited.add(id);
+ 
+    const parents = (inMap.get(id) || [])
+      .map(e => ({ edge: e, node: nodeById.get(e.source) }))
+      .filter(x => x.node && !spineSet.has(x.node.id));
+ 
+    for (const { edge, node } of parents) {
+      if (nb_isAux(node)) {
+        if (!result.find(n => n.id === node.id)) result.push(node);
+        dfs(node.id); // recurse up aux chain
+      }
+    }
+  }
+ 
+  dfs(spineNodeId);
+  return result;
+}
+ 
+// ─────────────────────────────────────────────
+// § 4  Position assignment
+// ─────────────────────────────────────────────
+ 
+const NB_BRANCH_Y_GAP   = 160;   // vertical gap between branches
+const NB_BASE_Y         = 160;   // Y of branch index 0
+const NB_SPINE_X_GAP    = 160;   // horizontal gap between spine nodes
+const NB_BRANCH_X_SHIFT = 40;    // extra X shift per branch index
+const NB_BASE_X         = 100;   // base X for branch 0
+ 
+// Aux layout constants
+const NB_AUX_DX         = 38;    // horizontal step per aux node upstream
+const NB_AUX_SLOPE_Y_R1 = -32;   // Y offset for only_r1 aux above spine
+const NB_AUX_SLOPE_Y_R2 =  32;   // Y offset for only_r2 aux below spine
+const NB_AUX_SLOPE_Y_SH = -20;   // Y offset for shared aux (slight up)
+const NB_AUX_ROW_GAP    = 22;    // extra Y per overflow row of aux
+ 
+function nb_assignPositions(branches, nodes, edges) {
+  const nodeById = nb_buildNodeById(nodes);
+  const inMap    = nb_buildInMap(edges);
+ 
+  // Mark all spine node ids across all branches for aux lookup
+  const globalSpineSet = new Set();
+  branches.forEach(br => br.spine.forEach(n => globalSpineSet.add(n.id)));
+ 
+  branches.forEach(br => {
+    const branchY = NB_BASE_Y + br.index * NB_BRANCH_Y_GAP;
+    const baseX   = NB_BASE_X + br.index * NB_BRANCH_X_SHIFT;
+ 
+    // ── Spine positions (same Y, increasing X) ──────────────
+    br.spine.forEach((node, i) => {
+      node.x = baseX + i * NB_SPINE_X_GAP;
+      node.y = branchY;
+    });
+ 
+    // ── Aux positions ────────────────────────────────────────
+    // For each spine node, place its aux cluster
+    const spineSet = new Set(br.spine.map(n => n.id));
+ 
+    br.spine.forEach(spineNode => {
+      const auxNodes = nb_collectAuxForSpineNode(
+        spineNode.id, inMap, nodeById, globalSpineSet
+      );
+ 
+      if (auxNodes.length === 0) return;
+ 
+      // Split by recipe side
+      const r1Aux = auxNodes.filter(n => n.kind === "only_r1");
+      const r2Aux = auxNodes.filter(n => n.kind === "only_r2");
+      const shAux = auxNodes.filter(n => n.kind !== "only_r1" && n.kind !== "only_r2");
+ 
+      // Sort each group by their node index (ascending → place closest to spine first)
+      [r1Aux, r2Aux, shAux].forEach(group =>
+        group.sort((a, b) => nb_nodeIdx(a) - nb_nodeIdx(b))
+      );
+ 
+      function placeAuxGroup(group, baseSlope, rowDir) {
+        // Overflow: if >5 per row, wrap
+        const MAX_ROW = 5;
+        group.forEach((aux, i) => {
+          const row = Math.floor(i / MAX_ROW);
+          const col = i % MAX_ROW;
+          aux.x = spineNode.x - NB_AUX_DX * (col + 1);
+          aux.y = spineNode.y + baseSlope + row * NB_AUX_ROW_GAP * rowDir;
+        });
+      }
+ 
+      placeAuxGroup(r1Aux, NB_AUX_SLOPE_Y_R1, -1);
+      placeAuxGroup(r2Aux, NB_AUX_SLOPE_Y_R2,  1);
+      placeAuxGroup(shAux, NB_AUX_SLOPE_Y_SH, -1);
+    });
+  });
+ 
+  // ── Fallback for any node still unpositioned ─────────────
+  let fallbackX = NB_BASE_X;
+  nodes.forEach(n => {
+    if (n.x == null || n.y == null || Number.isNaN(n.x) || Number.isNaN(n.y)) {
+      n.x = fallbackX;
+      n.y = NB_BASE_Y + branches.length * NB_BRANCH_Y_GAP;
+      fallbackX += 50;
+    }
+  });
+}
+ 
+// ─────────────────────────────────────────────
+// § 5  Public entry point
+// ─────────────────────────────────────────────
+ 
+/*
+  Call this instead of the old chain of layout functions inside renderGraph.
+ 
+  Returns the detected branches array (useful for debugging).
+ 
+  Usage inside renderGraph, replace everything from:
+    const primarySide = assignAllNodeXByPrimaryRecipe(nodes, edges);
+    layoutPrimarySideMainChain(...)
+    ...
+    fallbackAuxPositions(nodes);
+ 
+  With:
+    const branches = newBranchLayout(nodes, edges, graph);
+*/
+function newBranchLayout(nodes, edges, graph) {
+  // Reset positions
+  nodes.forEach(n => { n.x = null; n.y = null; });
+ 
+  const branches = nb_detectBranches(nodes, edges);
+  nb_assignPositions(branches, nodes, edges);
+ 
+  // Apply separate layout offset if needed (R2-only nodes shifted down)
+  // kept for compatibility with graph.separate_layout flag
+  if (graph && graph.separate_layout) {
+    const GAP = 200;
+    nodes.forEach(n => {
+      if (n.r2_node != null && n.r1_node == null) n.y += GAP;
+    });
+  }
+ 
+  return branches;
 }
 
 function renderGraph(graph) {
   root.selectAll("*").remove();
-  
+
   const nodes = graph.nodes;
   const edges = graph.edges;
   const nodeById = new Map(nodes.map(d => [d.id, d]));
+  newBranchLayout(nodes, edges, graph);
+  const auxGreekMap = buildAuxGreekMap(nodes);
   const branchInfo = graph.branch_info || { R1: {}, R2: {} };
-  layoutNodes(nodes, edges);
-  applyRecipeBranchOffsets(nodes, edges, branchInfo);
-  applySeparateRecipeOffset(nodes, graph);
-  assignAuxRelativeToBranch(nodes, edges);
-  commitAuxFromBranch(nodes);
-  fallbackAuxPositions(nodes);
+
+  //const primarySide = assignAllNodeXByPrimaryRecipe(nodes, edges);
+  //layoutPrimarySideMainChain(primarySide, nodes, edges);
+  //layoutSecondarySideMainChain(primarySide, nodes, edges);
+  //applySeparateRecipeOffset(nodes, graph);
+  //layoutNonMainUpstreamRecursively(nodes, edges);
+  //alignProcessChainsHorizontally(nodes, edges);
+  //softenAddSlopes(nodes, edges);
+  //fallbackAuxPositions(nodes);
+
   const outgoingOffsetMap = assignOutgoingOffsets(edges);
+
+  function getContainerIconName(node, side = null) {
+  if (!node) return null;
+
+  function getNameFromState(state) {
+    if (!state) return null;
+    const name = state[0];
+    return hasRealContainerName(name) ? name : null;
+  }
+
+  if (side === "R1") {
+    return (
+      getNameFromState(node.state_r1) ||
+      (hasRealContainerName(node.container_r1) ? node.container_r1 : null)
+    );
+  }
+
+  if (side === "R2") {
+    return (
+      getNameFromState(node.state_r2) ||
+      (hasRealContainerName(node.container_r2) ? node.container_r2 : null)
+    );
+  }
+
+  return (
+    getNameFromState(node.state_r1) ||
+    getNameFromState(node.state_r2) ||
+    (hasRealContainerName(node.container_r1) ? node.container_r1 : null) ||
+    (hasRealContainerName(node.container_r2) ? node.container_r2 : null) ||
+    null
+  );
+}
+
+  function mergedFlavorList(node) {
+    return [
+      ...normalizeFlavorList(node.flavor_r1),
+      ...normalizeFlavorList(node.flavor_r2)
+    ];
+  }
+
+  function flavorRingRadii(spec) {
+    return {
+      inner: spec.flavorInnerR ?? (spec.centerR + 1),
+      outer: spec.flavorOuterR ?? (spec.centerR + 4)
+    };
+  }
 
   function edgePath(d) {
     const sNode = nodeById.get(d.source);
-    const tNode = nodeById.get(d.target);
+  const tNode = nodeById.get(d.target);
 
-    const s0 = getAnchorPosition(sNode, d.source_anchor);
-    const t0 = getAnchorPosition(tNode, d.target_anchor);
+  if (!sNode || !tNode) {
+    console.log("[BAD EDGE]", d);
+    console.log("[MISSING SOURCE?]", d.source, nodeById.get(d.source));
+    console.log("[MISSING TARGET?]", d.target, nodeById.get(d.target));
+    return "";
+  }
+
+    const sAnchor = effectiveAnchor(sNode, d.source_anchor, d.style, true);
+    const tAnchor = effectiveAnchor(tNode, d.target_anchor, d.style, false);
+
+    const s0 = getAnchorPosition(sNode, sAnchor);
+    const t0 = getAnchorPosition(tNode, tAnchor);
 
     const extraOff = outgoingOffsetMap.get(d) || 0;
     const styleOff = edgeBaseOffset(d.style);
@@ -1305,35 +2766,61 @@ function renderGraph(graph) {
 
     let sAdj;
     if (isDumbbellLike(sNode)) {
-    sAdj = dumbbellBoundaryPoint(sNode, d.source_anchor, tx, ty, true);
-  } else {
-    sAdj = singleNodeStartBoundaryPoint(sNode, d.source_anchor, tx, ty);
-  }
+      sAdj = dumbbellBoundaryPoint(sNode, sAnchor, tx, ty, true);
+    } else {
+      sAdj = singleNodeStartBoundaryPoint(sNode, sAnchor, tx, ty);
+    }
 
     let tAdj;
     if (isDumbbellLike(tNode)) {
-    tAdj = dumbbellBoundaryPoint(tNode, d.target_anchor, s0.x, s0.y, false);
-  } else {
-    tAdj = singleNodeBoundaryPoint(tNode, d.target_anchor, s0.x, s0.y);
+      tAdj = dumbbellBoundaryPoint(tNode, tAnchor, s0.x, s0.y, false);
+    } else {
+      tAdj = singleNodeBoundaryPoint(tNode, tAnchor, s0.x, s0.y);
+    }
+
+    const dx = tAdj.x - sAdj.x;
+const dy = tAdj.y - sAdj.y;
+
+if (isAddEdge(d)) {
+  return addTrianglePath(sAdj.x, sAdj.y, tAdj.x, tAdj.y, 10, 4);
+}
+
+// 只单独定义 main -> container
+if (isMainToContainerEdge(d, sNode, tNode)) {
+  // 足够接近水平：直接画直线
+  if (Math.abs(dy) < 6) {
+    return `M ${sAdj.x},${sAdj.y} L ${tAdj.x},${tAdj.y}`;
   }
 
-  const mx = (sAdj.x + tAdj.x) / 2;
-  const my = (sAdj.y + tAdj.y) / 2 + (extraOff * 0.35);
+  // 否则优先向斜上方拐入 container
+  const mx = sAdj.x + dx * 0.45;
+  const my = sAdj.y - 26;
 
-  if (isAddEdge(d)) {
-    return addTrianglePath(sAdj.x, sAdj.y, tAdj.x, tAdj.y, 10, 4);
-  }
-  
   return `M ${sAdj.x},${sAdj.y} Q ${mx},${my} ${tAdj.x},${tAdj.y}`;
+}
 
+// process：尽量保持水平
+  const mx = (sAdj.x + tAdj.x) / 2;
+  // 关键：控制点 y 不再额外上下拱，而是尽量放在 source/target 的中间水平层
+  const my = (sAdj.y + tAdj.y) / 2;
+
+    return `M ${sAdj.x},${sAdj.y} Q ${mx},${my} ${tAdj.x},${tAdj.y}`;
   }
 
   function edgeLabelPosition(d) {
     const sNode = nodeById.get(d.source);
     const tNode = nodeById.get(d.target);
+    
+    if (!sNode || !tNode) {
+    console.log("[BAD EDGE LABEL]", d);
+    return { x: -9999, y: -9999 };
+  }
 
-    const s0 = getAnchorPosition(sNode, d.source_anchor);
-    const t0 = getAnchorPosition(tNode, d.target_anchor);
+    const sAnchor = effectiveAnchor(sNode, d.source_anchor, d.style, true);
+    const tAnchor = effectiveAnchor(tNode, d.target_anchor, d.style, false);
+
+    const s0 = getAnchorPosition(sNode, sAnchor);
+    const t0 = getAnchorPosition(tNode, tAnchor);
 
     const extraOff = outgoingOffsetMap.get(d) || 0;
     const styleOff = edgeBaseOffset(d.style);
@@ -1344,62 +2831,59 @@ function renderGraph(graph) {
     };
   }
 
-function drawIcon(g, iconName, spec) {
+  function drawIcon(g, iconName, spec) {
+    if (!iconName) return;
 
-  if (!iconName) return;
+    const size = spec.centerR * 1.6;
+    g.append("image")
+      .attr("href", `http://127.0.0.1:5500/data/icons/${iconName}.png`)
+      .attr("x", -size / 2)
+      .attr("y", -size / 2)
+      .attr("width", size)
+      .attr("height", size)
+      .attr("pointer-events", "none");
+  }
 
-  const size = spec.centerR * 1.6;
-
-  g.append("image")
-    .attr("href", `http://127.0.0.1:5500/data/icons/${iconName}.png`)
-    .attr("x", -size / 2)
-    .attr("y", -size / 2)
-    .attr("width", size)
-    .attr("height", size)
-    .attr("pointer-events", "none");
-}
   svg.select("defs").remove();
-const defs = svg.append("defs");
+  const defs = svg.append("defs");
 
-// arrow markers
-defs.selectAll("marker")
-  .data(["shared", "R1", "R2", "heat", "cold", "prep"])
-  .enter()
-  .append("marker")
-  .attr("id", d => `arrow-${d}`)
-  .attr("viewBox", "0 -5 10 10")
-  .attr("refX", 10)
-  .attr("refY", 0)
-  .attr("markerWidth", 7)
-  .attr("markerHeight", 7)
-  .attr("orient", "auto")
-  .append("path")
-  .attr("d", "M0,-5L10,0L0,5")
-  .attr("fill", d => TYPE_COLORS[d] ?? edgeColor(d));
+  defs.selectAll("marker")
+    .data(["shared", "R1", "R2", "heat", "cold", "prep"])
+    .enter()
+    .append("marker")
+    .attr("id", d => `arrow-${d}`)
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 10)
+    .attr("refY", 0)
+    .attr("markerWidth", 7)
+    .attr("markerHeight", 7)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-5L10,0L0,5")
+    .attr("fill", d => TYPE_COLORS[d] ?? edgeColor(d));
 
-// dumbbell gradient
-const grad = defs.append("linearGradient")
-  .attr("id", "dumbbell-grad")
-  .attr("x1", "0%")
-  .attr("y1", "0%")
-  .attr("x2", "0%")
-  .attr("y2", "100%");
+  const grad = defs.append("linearGradient")
+    .attr("id", "dumbbell-grad")
+    .attr("x1", "0%")
+    .attr("y1", "0%")
+    .attr("x2", "0%")
+    .attr("y2", "100%");
 
-grad.append("stop")
-  .attr("offset", "0%")
-  .attr("stop-color", COLORS.only_r1);
+  grad.append("stop")
+    .attr("offset", "0%")
+    .attr("stop-color", COLORS.only_r1);
 
-grad.append("stop")
-  .attr("offset", "45%")
-  .attr("stop-color", COLORS.only_r1);
+  grad.append("stop")
+    .attr("offset", "45%")
+    .attr("stop-color", COLORS.only_r1);
 
-grad.append("stop")
-  .attr("offset", "55%")
-  .attr("stop-color", COLORS.only_r2);
+  grad.append("stop")
+    .attr("offset", "55%")
+    .attr("stop-color", COLORS.only_r2);
 
-grad.append("stop")
-  .attr("offset", "100%")
-  .attr("stop-color", COLORS.only_r2);
+  grad.append("stop")
+    .attr("offset", "100%")
+    .attr("stop-color", COLORS.only_r2);
 
   const edgeLayer = root.append("g");
   const nodeLayer = root.append("g");
@@ -1411,40 +2895,29 @@ grad.append("stop")
     .attr("class", "edge-g");
 
   const edgePathSel = edgeGroup.append("path")
-  .attr("fill", d => isAddEdge(d) ? resolvedEdgeColor(d) : "none")
-  .attr("stroke", d => isAddEdge(d) ? "none" : resolvedEdgeColor(d))
-  .attr("stroke-width", d => isAddEdge(d) ? 0 : edgeStrokeWidth(d.style))
-  .attr("marker-end", d => {
-  if (isAddEdge(d)) return null;
-  const type = (d.type || "prep").toLowerCase().trim();
-  return `url(#arrow-${type})`;
-})
-
-  .on("mouseenter", function(event, d) {
-
-    tooltip
-      .style("opacity", 1)
-      .html(edgeTooltipHTML(d));
-
-  })
-
-  .on("mousemove", function(event) {
-
-    tooltip
-      .style("left", `${event.pageX + 12}px`)
-      .style("top", `${event.pageY + 12}px`);
-
-  })
-
-  .on("mouseleave", function() {
-
-    tooltip.style("opacity", 0);
-
-  });
+    .attr("fill", d => isAddEdge(d) ? resolvedEdgeColor(d) : "none")
+    .attr("stroke", d => isAddEdge(d) ? "none" : resolvedEdgeColor(d))
+    .attr("stroke-width", d => isAddEdge(d) ? 0 : edgeStrokeWidth(d.style))
+    .attr("marker-end", d => {
+      if (isAddEdge(d)) return null;
+      const type = (d.type || "prep").toLowerCase().trim();
+      return `url(#arrow-${type})`;
+    })
+    .on("mouseenter", function(event, d) {
+      tooltip.style("opacity", 1).html(edgeTooltipHTML(d));
+    })
+    .on("mousemove", function(event) {
+      tooltip
+        .style("left", `${event.pageX + 12}px`)
+        .style("top", `${event.pageY + 12}px`);
+    })
+    .on("mouseleave", function() {
+      tooltip.style("opacity", 0);
+    });
 
   const edgeLabelSel = edgeGroup.append("text")
-  .attr("class","edge-label")
-  .text(d => isAddEdge(d) ? "" : d.action);
+    .attr("class", "edge-label")
+    .text(d => isAddEdge(d) ? "" : d.action);
 
   const nodeGroup = nodeLayer.selectAll(".node-g")
     .data(nodes)
@@ -1465,386 +2938,451 @@ grad.append("stop")
     );
 
   nodeGroup.each(function(d) {
-  const g = d3.select(this);
-  const spec = nodeVisualSpec(d);
+    const g = d3.select(this);
+    const spec = nodeVisualSpec(d);
 
-  function drawSingleNode(cx, cy, node, recipeColor) {
-    const local = g.append("g")
-      .attr("transform", `translate(${cx},${cy})`);
+    function drawContainerHalf(group, node, side, spec) {
+  group.append("circle")
+    .attr("r", spec.centerR)
+    .attr("fill", "white")
+    .attr("stroke", "none");
 
-    // 最外层 recipe 外轮廓
-    local.append("circle")
-      .attr("r", spec.outerR)
-      .attr("fill", recipeColor)
-      .attr("stroke", "none");
+  drawIcon(group, getContainerIconName(node, side), spec);
 
-    // 主料：flavor ring + 白中心 + 白 physical ring
-    if (node.domain === "main") {
-      const flavors = normalizeFlavorList(node.flavor_r1 || node.flavor_r2);
+  const flavors = side === "R1"
+    ? normalizeFlavorList(node.flavor_r1)
+    : normalizeFlavorList(node.flavor_r2);
 
-      // 中间白圆
-      
-      local.append("circle")
+  if (flavors.length > 0) {
+    drawFlavorRing(group, spec.flavorInnerR, spec.flavorOuterR, flavors);
+  }
+
+  const physicalRing = group.append("circle")
+    .attr("r", spec.physicalR);
+
+  applyPhysicalRingStyle(
+    physicalRing,
+    side === "R1"
+      ? (node.state_r1 ? node.state_r1[2] : null)
+      : (node.state_r2 ? node.state_r2[2] : null),
+    side === "R1"
+      ? { ...node, flavor_r2: null, state_r2: null }
+      : { ...node, flavor_r1: null, state_r1: null }
+  );
+}
+
+    function drawContainerLikeAuxHalf(group, node, side, spec) {
+      group.append("circle")
         .attr("r", spec.centerR)
         .attr("fill", "white")
-        .attr("stroke", "none")
-      let iconName = null;
-
-if (node.kind === "only_r1") {
-  iconName = node.icon_r1;
-} else if (node.kind === "only_r2") {
-  iconName = node.icon_r2;
-} else {
-  iconName = node.icon_r1 || node.icon_r2;
-}
-
-drawIcon(local, iconName, spec);
-
-      if (flavors.length > 0) {
-        drawFlavorRing(local, spec.flavorInnerR, spec.flavorOuterR, flavors);
-      }
-      
-      // physical ring
-      const physicalRing = local.append("circle")
-        .attr("r", spec.physicalR);
-
-      applyPhysicalRingStyle(physicalRing, getPhysicalState(node), node);
-    }
-
-    // 辅料：中间颜色圆 + 白 physical ring
-    else {
-      local.append("circle")
-        .attr("r", spec.centerR)
-        .attr("fill", getFlavorColor(getPrimaryFlavor(node)))
         .attr("stroke", "none");
 
-      const physicalRing = local.append("circle")
+      drawIcon(group, getContainerIconName(node, side), spec);
+
+      const flavors = side === "R1"
+        ? normalizeFlavorList(node.flavor_r1)
+        : normalizeFlavorList(node.flavor_r2);
+
+      if (flavors.length > 0) {
+        const rr = flavorRingRadii(spec);
+        drawFlavorRing(group, rr.inner, rr.outer, flavors);
+      }
+
+      const physicalRing = group.append("circle")
         .attr("r", spec.physicalR);
 
-      applyPhysicalRingStyle(physicalRing, getPhysicalState(node), node);
+      applyPhysicalRingStyle(
+        physicalRing,
+        side === "R1" ? (node.state_r1 ? node.state_r1[2] : null) : (node.state_r2 ? node.state_r2[2] : null),
+        side === "R1"
+          ? { ...node, flavor_r2: null, state_r2: null }
+          : { ...node, flavor_r1: null, state_r1: null }
+      );
     }
-  }
 
-  if (d.kind === "merged_exact" && d.shared_add_dumbbell) {
-  // share-blue dumbbell body
-  g.append("path")
-    .attr("d", dumbbellBodyPath(spec.outerR, spec.halfOffset, spec.waistInset, 4))
-    .attr("fill", COLORS.merged_exact)
+    function drawContainerIcon(group, container) {
+      if (!container || container === "none") return;
+
+      group.append("image")
+        .attr("href", `http://127.0.0.1:5500/data/icons/${container}.png`)
+        .attr("x", -8)
+        .attr("y", -18)
+        .attr("width", 16)
+        .attr("height", 16)
+        .attr("pointer-events", "none");
+    }
+
+    function drawSingleNode(cx, cy, node, recipeColor) {
+  const local = g.append("g")
+    .attr("transform", `translate(${cx},${cy})`);
+
+  local.append("circle")
+    .attr("r", spec.outerR)
+    .attr("fill", recipeColor)
     .attr("stroke", "none");
 
-  const top = g.append("g")
-    .attr("transform", `translate(0, ${-spec.halfOffset})`);
-    top
-  .on("mouseenter", function(event) {
+  // container main
+  if (isContainerNode(node)) {
+  const flavors = normalizeFlavorList(node.flavor_r1 || node.flavor_r2);
 
-    tooltip
-      .style("opacity", 1)
-      .html(
-        nodeHalfTooltip(
-          d.state_r1,
-          d.flavor_r1,
-          d.r1_node
-        )
-      );
-
-  })
-  .on("mousemove", function(event) {
-
-    tooltip
-      .style("left", `${event.pageX + 12}px`)
-      .style("top", `${event.pageY + 12}px`);
-
-  })
-  .on("mouseleave", function() {
-
-    tooltip.style("opacity", 0);
-
-  });
-
-  const bottom = g.append("g")
-    .attr("transform", `translate(0, ${spec.halfOffset})`);
-    bottom
-  .on("mouseenter", function(event) {
-
-    tooltip
-      .style("opacity", 1)
-      .html(
-        nodeHalfTooltip(
-          d.state_r2,
-          d.flavor_r2,
-          d.r2_node
-        )
-      );
-
-  })
-  .on("mousemove", function(event) {
-
-    tooltip
-      .style("left", `${event.pageX + 12}px`)
-      .style("top", `${event.pageY + 12}px`);
-
-  })
-  .on("mouseleave", function() {
-
-    tooltip.style("opacity", 0);
-
-  });
-
-  if (d.domain === "main") {
-    // 上半
-    top.append("circle")
-      .attr("r", spec.centerR)
-      .attr("fill", "white")
-      .attr("stroke", "none")
-      drawIcon(top, d.icon_r1, spec);
-
-    const topFlavors = normalizeFlavorList(d.flavor_r1);
-    if (topFlavors.length > 0) {
-      drawFlavorRing(top, spec.flavorInnerR, spec.flavorOuterR, topFlavors);
-    }
-
-    const topPhysical = top.append("circle")
-      .attr("r", spec.physicalR);
-
-    applyPhysicalRingStyle(topPhysical, d.state_r1 ? d.state_r1[2] : null, {
-      ...d,
-      flavor_r2: null,
-      state_r2: null
-    });
-
-    // 下半
-    bottom.append("circle")
-      .attr("r", spec.centerR)
-      .attr("fill", "white")
-      .attr("stroke", "none")
-      drawIcon(bottom, d.icon_r2, spec);
-
-    const bottomFlavors = normalizeFlavorList(d.flavor_r2);
-    if (bottomFlavors.length > 0) {
-      drawFlavorRing(bottom, spec.flavorInnerR, spec.flavorOuterR, bottomFlavors);
-    }
-
-    const bottomPhysical = bottom.append("circle")
-      .attr("r", spec.physicalR);
-
-    applyPhysicalRingStyle(bottomPhysical, d.state_r2 ? d.state_r2[2] : null, {
-      ...d,
-      flavor_r1: null,
-      state_r1: null
-    });
-
-  } else {
-    // aux 版本
-    top.append("circle")
-      .attr("r", spec.centerR)
-      .attr("fill", getFlavorColor((normalizeFlavorList(d.flavor_r1)[0]) || "none"))
-      .attr("stroke", "none");
-
-    const topPhysical = top.append("circle")
-      .attr("r", spec.physicalR);
-
-    applyPhysicalRingStyle(topPhysical, d.state_r1 ? d.state_r1[2] : null, {
-      ...d,
-      flavor_r2: null,
-      state_r2: null
-    });
-
-    bottom.append("circle")
-      .attr("r", spec.centerR)
-      .attr("fill", getFlavorColor((normalizeFlavorList(d.flavor_r2)[0]) || "none"))
-      .attr("stroke", "none");
-
-    const bottomPhysical = bottom.append("circle")
-      .attr("r", spec.physicalR);
-
-    applyPhysicalRingStyle(bottomPhysical, d.state_r2 ? d.state_r2[2] : null, {
-      ...d,
-      flavor_r1: null,
-      state_r1: null
-    });
-  }
-
-} else if (d.kind === "merged_exact") {
-  drawSingleNode(0, 0, d, COLORS.merged_exact);
-
-} else if (d.kind === "only_r1") {
-  drawSingleNode(0, 0, d, COLORS.only_r1);
-
-} else if (d.kind === "only_r2") {
-  drawSingleNode(0, 0, d, COLORS.only_r2);
-
-} else if (d.kind === "merged_similar") {
-  // 1. 先画整体 dumbbell body
-  g.append("path")
-    .attr("d", dumbbellBodyPath(spec.outerR, spec.halfOffset, spec.waistInset, 4))
-    .attr("fill", "url(#dumbbell-grad)")
+  local.append("circle")
+    .attr("r", spec.centerR)
+    .attr("fill", "white")
     .attr("stroke", "none");
 
-  // 2. 上半（R1）
-  const topNode = {
-    ...d,
-    flavor_r1: d.flavor_r1,
-    flavor_r2: null,
-    state_r1: d.state_r1,
-    state_r2: null
-  };
+  drawIcon(local, getContainerIconName(node), spec);
 
-  const top = g.append("g")
-    .attr("transform", `translate(0, ${-spec.halfOffset})`);
-    top
-  .on("mouseenter", function(event) {
-
-    tooltip
-      .style("opacity", 1)
-      .html(
-        nodeHalfTooltip(
-          d.state_r1,
-          d.flavor_r1,
-          d.r1_node
-        )
-      );
-
-  })
-  .on("mousemove", function(event) {
-
-    tooltip
-      .style("left", `${event.pageX + 12}px`)
-      .style("top", `${event.pageY + 12}px`);
-
-  })
-  .on("mouseleave", function() {
-
-    tooltip.style("opacity", 0);
-
-  });
-
-  if (d.domain === "main") {
-    top.append("circle")
-      .attr("r", spec.centerR)
-      .attr("fill", "white")
-      .attr("stroke", "none")
-      drawIcon(top, d.icon_r1, spec);
-
-    const topFlavors = normalizeFlavorList(d.flavor_r1);
-    if (topFlavors.length > 0) {
-      drawFlavorRing(top, spec.flavorInnerR, spec.flavorOuterR, topFlavors);
-    }
-
-    const physicalRingTop = top.append("circle")
-      .attr("r", spec.physicalR);
-
-    applyPhysicalRingStyle(physicalRingTop, d.state_r1 ? d.state_r1[2] : null, topNode);
-  } else {
-    top.append("circle")
-      .attr("r", spec.centerR)
-      .attr("fill", getFlavorColor(getPrimaryFlavor(topNode)))
-      .attr("stroke", "none");
-
-    const physicalRingTop = top.append("circle")
-      .attr("r", spec.physicalR);
-
-    applyPhysicalRingStyle(physicalRingTop, d.state_r1 ? d.state_r1[2] : null, topNode);
+  if (flavors.length > 0) {
+    drawFlavorRing(local, spec.flavorInnerR, spec.flavorOuterR, flavors);
   }
 
-  // 3. 下半（R2）
-  const bottomNode = {
-    ...d,
-    flavor_r1: d.flavor_r2,
-    flavor_r2: null,
-    state_r1: d.state_r2,
-    state_r2: null
-  };
+  const physicalRing = local.append("circle")
+    .attr("r", spec.physicalR);
 
-  const bottom = g.append("g")
-    .attr("transform", `translate(0, ${spec.halfOffset})`);
-    bottom
-  .on("mouseenter", function(event) {
-
-    tooltip
-      .style("opacity", 1)
-      .html(
-        nodeHalfTooltip(
-          d.state_r2,
-          d.flavor_r2,
-          d.r2_node
-        )
-      );
-
-  })
-  .on("mousemove", function(event) {
-
-    tooltip
-      .style("left", `${event.pageX + 12}px`)
-      .style("top", `${event.pageY + 12}px`);
-
-  })
-  .on("mouseleave", function() {
-
-    tooltip.style("opacity", 0);
-
-  });
-
-  if (d.domain === "main") {
-    bottom.append("circle")
-      .attr("r", spec.centerR)
-      .attr("fill", "white")
-      .attr("stroke", "none")
-      drawIcon(bottom, d.icon_r2, spec);
-
-    const bottomFlavors = normalizeFlavorList(d.flavor_r2);
-    if (bottomFlavors.length > 0) {
-      drawFlavorRing(bottom, spec.flavorInnerR, spec.flavorOuterR, bottomFlavors);
-    }
-
-    const physicalRingBottom = bottom.append("circle")
-      .attr("r", spec.physicalR);
-
-    applyPhysicalRingStyle(physicalRingBottom, d.state_r2 ? d.state_r2[2] : null, bottomNode);
-  } else {
-    bottom.append("circle")
-      .attr("r", spec.centerR)
-      .attr("fill", getFlavorColor(getPrimaryFlavor(bottomNode)))
-      .attr("stroke", "none");
-
-    const physicalRingBottom = bottom.append("circle")
-      .attr("r", spec.physicalR);
-
-    applyPhysicalRingStyle(physicalRingBottom, d.state_r2 ? d.state_r2[2] : null, bottomNode);
-  }
+  applyPhysicalRingStyle(physicalRing, getPhysicalState(node), node);
+  return;
 }
 
-});
+  // 普通 main
+  if (node.domain === "main") {
+    const flavors = normalizeFlavorList(node.flavor_r1 || node.flavor_r2);
 
-nodeGroup
-  .attr("transform", d => `translate(${d.x},${d.y})`)
-  .on("mouseenter", function(event, d) {
+    local.append("circle")
+      .attr("r", spec.centerR)
+      .attr("fill", "white")
+      .attr("stroke", "none");
 
-    // dumbbell 不在 nodeGroup 显示 tooltip
-    if (d.kind === "merged_similar" || (d.kind === "merged_exact" && d.shared_add_dumbbell)) {
-      return;
+    let iconName = null;
+    if (node.kind === "only_r1") {
+      iconName = node.icon_r1;
+    } else if (node.kind === "only_r2") {
+      iconName = node.icon_r2;
+    } else {
+      iconName = node.icon_r1 || node.icon_r2;
     }
 
-    const state = d.state_r1 || d.state_r2;
-    const flavor = d.flavor_r1 || d.flavor_r2;
-    const idx = d.r1_node ?? d.r2_node;
+    drawIcon(local, iconName, spec);
 
-    tooltip
-      .style("opacity", 1)
-      .html(nodeHalfTooltip(state, flavor, idx));
+    if (flavors.length > 0) {
+      drawFlavorRing(local, spec.flavorInnerR, spec.flavorOuterR, flavors);
+    }
 
-  })
-  .on("mousemove", function(event) {
+    const physicalRing = local.append("circle")
+      .attr("r", spec.physicalR);
 
-    tooltip
-      .style("left", `${event.pageX + 12}px`)
-      .style("top", `${event.pageY + 12}px`);
+    applyPhysicalRingStyle(physicalRing, getPhysicalState(node), node);
+    return;
+  }
 
-  })
-  .on("mouseleave", function() {
+  // aux
+  local.append("circle")
+    .attr("r", spec.centerR)
+    .attr("fill", getFlavorColor(getPrimaryFlavor(node)))
+    .attr("stroke", "none");
+  
+  const auxCat = getAuxCategoryName(node);
+const greek = auxCat ? auxGreekMap.get(auxCat) : null;
 
-    tooltip.style("opacity", 0);
+if (greek) {
+  local.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "central")
+    .attr("font-size", spec.centerR * 1.4)
+    .attr("font-weight", 400)
+    .attr("fill", getReadableTextColor(getFlavorColor(getPrimaryFlavor(node))))
+    .text(greek);
+}
 
+  const physicalRing = local.append("circle")
+    .attr("r", spec.physicalR);
+
+  applyPhysicalRingStyle(physicalRing, getPhysicalState(node), node);
+}
+
+    if (d.kind === "merged_exact" && d.shape_dumbbell) {
+      g.append("path")
+        .attr("d", dumbbellBodyPath(spec.outerR, spec.halfOffset, spec.waistInset, 4))
+        .attr("fill", COLORS.merged_exact)
+        .attr("stroke", "none");
+
+      const top = g.append("g")
+        .attr("transform", `translate(0, ${-spec.halfOffset})`);
+
+      top
+        .on("mouseenter", function(event) {
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node));
+        })
+        .on("mousemove", function(event) {
+          tooltip
+            .style("left", `${event.pageX + 12}px`)
+            .style("top", `${event.pageY + 12}px`);
+        })
+        .on("mouseleave", function() {
+          tooltip.style("opacity", 0);
+        });
+
+      const bottom = g.append("g")
+        .attr("transform", `translate(0, ${spec.halfOffset})`);
+
+      bottom
+        .on("mouseenter", function(event) {
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node));
+        })
+        .on("mousemove", function(event) {
+          tooltip
+            .style("left", `${event.pageX + 12}px`)
+            .style("top", `${event.pageY + 12}px`);
+        })
+        .on("mouseleave", function() {
+          tooltip.style("opacity", 0);
+        });
+
+      if (isContainerNode(d)) {
+  drawContainerHalf(top, d, "R1", spec);
+  drawContainerHalf(bottom, d, "R2", spec);
+}  else if (d.domain === "main") {
+        top.append("circle")
+          .attr("r", spec.centerR)
+          .attr("fill", "white")
+          .attr("stroke", "none");
+
+        drawIcon(top, d.icon_r1, spec);
+
+        const topFlavors = normalizeFlavorList(d.flavor_r1);
+        if (topFlavors.length > 0) {
+          drawFlavorRing(top, spec.flavorInnerR, spec.flavorOuterR, topFlavors);
+        }
+
+        const topPhysical = top.append("circle")
+          .attr("r", spec.physicalR);
+
+        applyPhysicalRingStyle(topPhysical, d.state_r1 ? d.state_r1[2] : null, {
+          ...d,
+          flavor_r2: null,
+          state_r2: null
+        });
+
+        bottom.append("circle")
+          .attr("r", spec.centerR)
+          .attr("fill", "white")
+          .attr("stroke", "none");
+
+        drawIcon(bottom, d.icon_r2, spec);
+
+        const bottomFlavors = normalizeFlavorList(d.flavor_r2);
+        if (bottomFlavors.length > 0) {
+          drawFlavorRing(bottom, spec.flavorInnerR, spec.flavorOuterR, bottomFlavors);
+        }
+
+        const bottomPhysical = bottom.append("circle")
+          .attr("r", spec.physicalR);
+
+        applyPhysicalRingStyle(bottomPhysical, d.state_r2 ? d.state_r2[2] : null, {
+          ...d,
+          flavor_r1: null,
+          state_r1: null
+        });
+
+      } else {
+        top.append("circle")
+          .attr("r", spec.centerR)
+          .attr("fill", getFlavorColor((normalizeFlavorList(d.flavor_r1)[0]) || "none"))
+          .attr("stroke", "none");
+        
+        const topCat = d.state_r1 ? d.state_r1[0].trim().toLowerCase() : null;
+const topGreek = topCat ? auxGreekMap.get(topCat) : null;
+if (topGreek) {
+  top.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "central")
+    .attr("font-size", spec.centerR * 1.6)
+    .attr("font-weight", 700)
+    .attr("fill", "white")
+    .text(topGreek);
+}
+
+        const topPhysical = top.append("circle")
+          .attr("r", spec.physicalR);
+
+        applyPhysicalRingStyle(topPhysical, d.state_r1 ? d.state_r1[2] : null, {
+          ...d,
+          flavor_r2: null,
+          state_r2: null
+        });
+
+        bottom.append("circle")
+          .attr("r", spec.centerR)
+          .attr("fill", getFlavorColor((normalizeFlavorList(d.flavor_r2)[0]) || "none"))
+          .attr("stroke", "none");
+        
+        const bottomCat = d.state_r2 ? d.state_r2[0].trim().toLowerCase() : null;
+const bottomGreek = bottomCat ? auxGreekMap.get(bottomCat) : null;
+if (bottomGreek) {
+  bottom.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "central")
+    .attr("font-size", spec.centerR * 1.6)
+    .attr("font-weight", 700)
+    .attr("fill", "white")
+    .text(bottomGreek);
+}
+        const bottomPhysical = bottom.append("circle")
+          .attr("r", spec.physicalR);
+
+        applyPhysicalRingStyle(bottomPhysical, d.state_r2 ? d.state_r2[2] : null, {
+          ...d,
+          flavor_r1: null,
+          state_r1: null
+        });
+      }
+
+    } else if (d.kind === "merged_exact") {
+      drawSingleNode(0, 0, d, COLORS.merged_exact);
+
+    } else if (d.kind === "only_r1") {
+      drawSingleNode(0, 0, d, COLORS.only_r1);
+
+    } else if (d.kind === "only_r2") {
+      drawSingleNode(0, 0, d, COLORS.only_r2);
+
+    } else if (d.kind === "merged_similar") {
+      g.append("path")
+        .attr("d", dumbbellBodyPath(spec.outerR, spec.halfOffset, spec.waistInset, 4))
+        .attr("fill", "url(#dumbbell-grad)")
+        .attr("stroke", "none");
+
+      const topNode = {
+        ...d,
+        flavor_r1: d.flavor_r1,
+        flavor_r2: null,
+        state_r1: d.state_r1,
+        state_r2: null
+      };
+
+      const top = g.append("g")
+        .attr("transform", `translate(0, ${-spec.halfOffset})`);
+
+      top
+        .on("mouseenter", function(event) {
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node));
+        })
+        .on("mousemove", function(event) {
+          tooltip
+            .style("left", `${event.pageX + 12}px`)
+            .style("top", `${event.pageY + 12}px`);
+        })
+        .on("mouseleave", function() {
+          tooltip.style("opacity", 0);
+        });
+
+      const bottomNode = {
+        ...d,
+        flavor_r1: d.flavor_r2,
+        flavor_r2: null,
+        state_r1: d.state_r2,
+        state_r2: null
+      };
+
+      const bottom = g.append("g")
+        .attr("transform", `translate(0, ${spec.halfOffset})`);
+
+      bottom
+        .on("mouseenter", function(event) {
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node));
+        })
+        .on("mousemove", function(event) {
+          tooltip
+            .style("left", `${event.pageX + 12}px`)
+            .style("top", `${event.pageY + 12}px`);
+        })
+        .on("mouseleave", function() {
+          tooltip.style("opacity", 0);
+        });
+
+      if (isContainerNode(d)) {
+  drawContainerHalf(top, d, "R1", spec);
+  drawContainerHalf(bottom, d, "R2", spec);}
+   else if (d.domain === "main") {
+        top.append("circle")
+          .attr("r", spec.centerR)
+          .attr("fill", "white")
+          .attr("stroke", "none");
+
+        drawIcon(top, d.icon_r1, spec);
+
+        const topFlavors = normalizeFlavorList(d.flavor_r1);
+        if (topFlavors.length > 0) {
+          drawFlavorRing(top, spec.flavorInnerR, spec.flavorOuterR, topFlavors);
+        }
+
+        const physicalRingTop = top.append("circle")
+          .attr("r", spec.physicalR);
+
+        applyPhysicalRingStyle(physicalRingTop, d.state_r1 ? d.state_r1[2] : null, topNode);
+
+        bottom.append("circle")
+          .attr("r", spec.centerR)
+          .attr("fill", "white")
+          .attr("stroke", "none");
+
+        drawIcon(bottom, d.icon_r2, spec);
+
+        const bottomFlavors = normalizeFlavorList(d.flavor_r2);
+        if (bottomFlavors.length > 0) {
+          drawFlavorRing(bottom, spec.flavorInnerR, spec.flavorOuterR, bottomFlavors);
+        }
+
+        const physicalRingBottom = bottom.append("circle")
+          .attr("r", spec.physicalR);
+
+        applyPhysicalRingStyle(physicalRingBottom, d.state_r2 ? d.state_r2[2] : null, bottomNode);
+
+      } else {
+        top.append("circle")
+          .attr("r", spec.centerR)
+          .attr("fill", getFlavorColor(getPrimaryFlavor(topNode)))
+          .attr("stroke", "none");
+
+        const physicalRingTop = top.append("circle")
+          .attr("r", spec.physicalR);
+
+        applyPhysicalRingStyle(physicalRingTop, d.state_r1 ? d.state_r1[2] : null, topNode);
+
+        bottom.append("circle")
+          .attr("r", spec.centerR)
+          .attr("fill", getFlavorColor(getPrimaryFlavor(bottomNode)))
+          .attr("stroke", "none");
+
+        const physicalRingBottom = bottom.append("circle")
+          .attr("r", spec.physicalR);
+
+        applyPhysicalRingStyle(physicalRingBottom, d.state_r2 ? d.state_r2[2] : null, bottomNode);
+      }
+    }
   });
+
+  nodeGroup
+    .attr("transform", d => `translate(${d.x},${d.y})`)
+    .on("mouseenter", function(event, d) {
+      if (d.kind === "merged_similar" || (d.kind === "merged_exact" && d.shape_dumbbell)) {
+        return;
+      }
+
+      const state = d.state_r1 || d.state_r2;
+      const flavor = d.flavor_r1 || d.flavor_r2;
+
+      tooltip
+        .style("opacity", 1)
+        .html(nodeHalfTooltip(state, flavor, d.r1_node ?? d.r2_node));
+    })
+    .on("mousemove", function(event) {
+      tooltip
+        .style("left", `${event.pageX + 12}px`)
+        .style("top", `${event.pageY + 12}px`);
+    })
+    .on("mouseleave", function() {
+      tooltip.style("opacity", 0);
+    });
 
   function updateEdges() {
     edgePathSel.attr("d", edgePath);
