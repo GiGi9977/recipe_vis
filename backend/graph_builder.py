@@ -1581,6 +1581,32 @@ def build_full_graph_main_aux(recipe1, recipe2, compare_main_fn):
         [],  # propagated_nodes 这一层现在不再参与最终图
         non_main_merged_nodes,
     )
+
+    # ── Remove only_r1/only_r2 nodes superseded by a merged node ──────────
+    # When the start-node path creates an only_r1 for R1 node X, but the
+    # main matcher also creates a merged_similar/merged_exact that claims the
+    # same R1 node X, both survive dedup (different r2_node keys).  We must
+    # drop the only_r1 because the merged node already represents that state.
+    _claimed_r1 = {
+        m.r1_node
+        for m in all_nodes
+        if m.kind in ("merged_exact", "merged_similar") and m.r1_node is not None
+    }
+    _claimed_r2 = {
+        m.r2_node
+        for m in all_nodes
+        if m.kind in ("merged_exact", "merged_similar") and m.r2_node is not None
+    }
+    _before = len(all_nodes)
+    all_nodes = [
+        m for m in all_nodes
+        if not (m.kind == "only_r1" and m.r1_node is not None and m.r1_node in _claimed_r1)
+        and not (m.kind == "only_r2" and m.r2_node is not None and m.r2_node in _claimed_r2)
+    ]
+    if len(all_nodes) < _before:
+        print(f"[SUPERSEDED NODES] removed {_before - len(all_nodes)} only_r1/only_r2 node(s) "
+              f"already claimed by a merged node")
+
     all_nodes = attach_icons_to_nodes(all_nodes)
 
     # 不再使用 container_lane，保留兼容
@@ -1646,8 +1672,26 @@ def build_full_graph_main_aux(recipe1, recipe2, compare_main_fn):
     # =========================================================
     # 5) render edges
     # =========================================================
+    # Deduplicate main_merged_nodes before building edges — the same
+    # (domain, r1_node, r2_node) pair can appear twice when a node is
+    # both a "start node" (include_start_node path) AND in the match
+    # records (e.g. r1=14 and r1=16 share identical state_keys so the
+    # matcher matches both to the same r2 node, generating a second
+    # merged_exact entry for the same pair). Without this dedup the
+    # ghost merged_id still generates render edges that reference a node
+    # that was already removed from all_nodes, which breaks frontend
+    # layout (inflated Kahn in-degrees, fallback positioning).
+    main_merged_nodes_deduped = dedup_merged_nodes_with_priority(
+        main_merged_nodes, [], []
+    )
+    # Filter out any node superseded by the removal step above so no
+    # ghost edges are generated for nodes no longer in all_nodes.
+    _surviving_ids = {m.merged_id for m in all_nodes}
+    main_merged_nodes_deduped = [
+        m for m in main_merged_nodes_deduped if m.merged_id in _surviving_ids
+    ]
     main_render_edges = build_render_edges(
-        main_merged_nodes,
+        main_merged_nodes_deduped,
         recipe1,
         recipe2,
         recipe1_id,

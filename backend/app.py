@@ -1,5 +1,7 @@
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .matcher import compare_recipes
@@ -8,6 +10,11 @@ from .graph_builder import extract_branch_info_from_recipe
 from .utils import load_recipe, list_recipes
 
 app = FastAPI()
+
+# Serve icons at /icons/<name>.png
+_ICONS_DIR = Path(__file__).parent.parent / "data" / "icons"
+if _ICONS_DIR.exists():
+    app.mount("/icons", StaticFiles(directory=str(_ICONS_DIR)), name="icons")
 
 app.add_middleware(
     CORSMiddleware,

@@ -16,13 +16,14 @@ svg.call(
 
 const tooltip = d3.select("#tooltip");
 
-function nodeHalfTooltip(state, flavor, idx) {
+function nodeHalfTooltip(state, flavor, idx, nodeId) {
 
   if (!state) return "";
 
   const [name, type, physical, chemical] = state;
 
   return `
+    ${nodeId ? `<span style="font-size:10px;opacity:0.5;">${nodeId}</span><br/>` : ""}
     <b>${name}</b><br/><br/>
     ${physical}<br/>
     ${chemical}<br/>
@@ -2557,58 +2558,60 @@ function nb_collectAuxForSpineNode(spineNodeId, inMap, nodeById, spineSet) {
 // § 4  Position assignment
 // ─────────────────────────────────────────────
  
-const NB_BRANCH_Y_GAP   = 160;   // vertical gap between branches
-const NB_BASE_Y         = 160;   // Y of branch index 0
-const NB_SPINE_X_GAP    = 160;   // horizontal gap between spine nodes
-const NB_BRANCH_X_SHIFT = 40;    // extra X shift per branch index
-const NB_BASE_X         = 100;   // base X for branch 0
- 
+const NB_BRANCH_Y_GAP    = 400;   // vertical gap between branches
+const NB_BASE_Y          = 180;   // Y of branch index 0
+const NB_SPINE_X_GAP     = 130;   // horizontal gap between spine nodes
+const NB_BRANCH_X_SHIFT  = 40;    // extra X shift per branch index (legacy)
+const NB_BASE_X          = 120;   // base X for branch 0
+
 // Aux layout constants
-const NB_AUX_DX         = 38;    // horizontal step per aux node upstream
-const NB_AUX_SLOPE_Y_R1 = -32;   // Y offset for only_r1 aux above spine
-const NB_AUX_SLOPE_Y_R2 =  32;   // Y offset for only_r2 aux below spine
-const NB_AUX_SLOPE_Y_SH = -20;   // Y offset for shared aux (slight up)
-const NB_AUX_ROW_GAP    = 22;    // extra Y per overflow row of aux
- 
+const NB_AUX_DX          = 38;    // horizontal step per aux node upstream
+const NB_AUX_SLOPE_Y_R1  = -32;   // Y offset for only_r1 aux above spine (legacy)
+const NB_AUX_SLOPE_Y_R2  =  32;   // Y offset for only_r2 aux below spine (legacy)
+const NB_AUX_SLOPE_Y_SH  = -20;   // Y offset for shared aux (legacy)
+const NB_AUX_ROW_GAP     = 22;    // extra Y per overflow row of aux
+const NB_AUX_CROSS_EXTRA = 6;     // extra Y gap when cross-branch merging
+const NB_AUX_HORIZ_JITTER = 8;    // Y jitter separating R1/R2 aux on horizontal branch
+
 function nb_assignPositions(branches, nodes, edges) {
   const nodeById = nb_buildNodeById(nodes);
   const inMap    = nb_buildInMap(edges);
- 
+
   // Mark all spine node ids across all branches for aux lookup
   const globalSpineSet = new Set();
   branches.forEach(br => br.spine.forEach(n => globalSpineSet.add(n.id)));
- 
+
   branches.forEach(br => {
     const branchY = NB_BASE_Y + br.index * NB_BRANCH_Y_GAP;
     const baseX   = NB_BASE_X + br.index * NB_BRANCH_X_SHIFT;
- 
+
     // ── Spine positions (same Y, increasing X) ──────────────
     br.spine.forEach((node, i) => {
       node.x = baseX + i * NB_SPINE_X_GAP;
       node.y = branchY;
     });
- 
+
     // ── Aux positions ────────────────────────────────────────
     // For each spine node, place its aux cluster
     const spineSet = new Set(br.spine.map(n => n.id));
- 
+
     br.spine.forEach(spineNode => {
       const auxNodes = nb_collectAuxForSpineNode(
         spineNode.id, inMap, nodeById, globalSpineSet
       );
- 
+
       if (auxNodes.length === 0) return;
- 
+
       // Split by recipe side
       const r1Aux = auxNodes.filter(n => n.kind === "only_r1");
       const r2Aux = auxNodes.filter(n => n.kind === "only_r2");
       const shAux = auxNodes.filter(n => n.kind !== "only_r1" && n.kind !== "only_r2");
- 
+
       // Sort each group by their node index (ascending → place closest to spine first)
       [r1Aux, r2Aux, shAux].forEach(group =>
         group.sort((a, b) => nb_nodeIdx(a) - nb_nodeIdx(b))
       );
- 
+
       function placeAuxGroup(group, baseSlope, rowDir) {
         // Overflow: if >5 per row, wrap
         const MAX_ROW = 5;
@@ -2619,7 +2622,7 @@ function nb_assignPositions(branches, nodes, edges) {
           aux.y = spineNode.y + baseSlope + row * NB_AUX_ROW_GAP * rowDir;
         });
       }
- 
+
       placeAuxGroup(r1Aux, NB_AUX_SLOPE_Y_R1, -1);
       placeAuxGroup(r2Aux, NB_AUX_SLOPE_Y_R2,  1);
       placeAuxGroup(shAux, NB_AUX_SLOPE_Y_SH, -1);
@@ -2656,22 +2659,949 @@ function nb_assignPositions(branches, nodes, edges) {
     const branches = newBranchLayout(nodes, edges, graph);
 */
 function newBranchLayout(nodes, edges, graph) {
-  // Reset positions
   nodes.forEach(n => { n.x = null; n.y = null; });
- 
-  const branches = nb_detectBranches(nodes, edges);
-  nb_assignPositions(branches, nodes, edges);
- 
-  // Apply separate layout offset if needed (R2-only nodes shifted down)
-  // kept for compatibility with graph.separate_layout flag
-  if (graph && graph.separate_layout) {
-    const GAP = 200;
-    nodes.forEach(n => {
-      if (n.r2_node != null && n.r1_node == null) n.y += GAP;
+
+  const nodeById = new Map(nodes.map(n => [n.id, n]));
+
+  // halfOffset: distance from dumbbell center to each circle's center
+  // For main nodes: outerR=24 → halfOffset=25; aux: outerR=11 → halfOffset=12
+  const mainHalfOffset = getHalfOffsetForNode({ domain: "main", kind: "merged_similar" });
+  const auxHalfOffset  = getHalfOffsetForNode({ domain: "aux",  kind: "merged_similar" });
+
+  const mainNodes = nodes.filter(n => nb_isMain(n) || nb_isContainer(n));
+  const mainIds   = new Set(mainNodes.map(n => n.id));
+
+  // ── Step 1: Deduplicate edges by source→target ──────────────────────────────────
+  const seenEdge  = new Set();
+  const edgesDedup = [];
+  for (const e of edges) {
+    const key = e.source + "→" + e.target;
+    if (!seenEdge.has(key)) { seenEdge.add(key); edgesDedup.push(e); }
+  }
+
+  // ── Step 2: Global topological levels (Kahn's BFS, ghost-node guarded) ──
+  const nodeIds  = new Set(nodes.map(n => n.id));
+  const outAll   = new Map(nodes.map(n => [n.id, []]));
+  const inDegAll = new Map(nodes.map(n => [n.id, 0]));
+  for (const e of edgesDedup) {
+    if (!nodeIds.has(e.source)) continue;   // skip ghost nodes not in node list
+    outAll.get(e.source).push(e.target);
+    if (inDegAll.has(e.target)) inDegAll.set(e.target, (inDegAll.get(e.target) || 0) + 1);
+  }
+  const globalLevel = new Map(nodes.map(n => [n.id, 0]));
+  const inWork = new Map(inDegAll);
+  const topoQ  = nodes.filter(n => (inWork.get(n.id) || 0) === 0).map(n => n.id);
+  while (topoQ.length) {
+    const id = topoQ.shift();
+    for (const next of (outAll.get(id) || [])) {
+      const nl = (globalLevel.get(id) || 0) + 1;
+      if (nl > (globalLevel.get(next) || 0)) globalLevel.set(next, nl);
+      const d = (inWork.get(next) || 1) - 1;
+      inWork.set(next, d);
+      if (d <= 0) topoQ.push(next);
+    }
+  }
+
+  // ── Step 3: Connected components via process-edge BFS over all node types ──
+  // Rules:
+  //  • Process edge same-kind (merged↔merged, only↔only) → same branch.
+  //  • Process edge only_r1/only_r2 → merged_* where source has no merged process-predecessor
+  //      → cross-branch (source is a parallel-only chain feeding into the merged spine).
+  //  • Process edge only_r1/only_r2 → merged_* where source HAS a merged process-predecessor
+  //      → same branch (source is inline on the merged spine, e.g. M7 after M6).
+  //  • Process edge merged_* → only_r1/only_r2 → same branch always.
+  //  • Add edge into a merged container (merged_exact / merged_similar) → always cross-branch.
+  //  • Add edge into an only_r1/only_r2 container with exactly 1 incoming add → same branch.
+  //  • Add edge into an only_r1/only_r2 container with 2+ incoming adds → cross-branch.
+  //  • Add edges into non-container nodes → cross-branch.
+
+  // Count incoming add edges per container.
+  const containerAddInCount = new Map();
+  for (const e of edgesDedup) {
+    if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+    if (!isAddEdge(e)) continue;
+    const tgt = nodeById.get(e.target);
+    if (tgt && nb_isContainer(tgt)) {
+      containerAddInCount.set(e.target, (containerAddInCount.get(e.target) || 0) + 1);
+    }
+  }
+
+  // Build process-only in-map for containers (to find chain origins).
+  const containerProcessIn = new Map(nodes.map(n => [n.id, []]));
+  for (const e of edgesDedup) {
+    if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+    if (isAddEdge(e)) continue;
+    const tgt = nodeById.get(e.target);
+    if (tgt && nb_isContainer(tgt)) {
+      containerProcessIn.get(e.target).push(e.source);
+    }
+  }
+
+  // Walk backward through container→container process edges to find chain origin.
+  function containerChainOrigin(startId) {
+    let cur = startId;
+    const seen = new Set();
+    while (!seen.has(cur)) {
+      seen.add(cur);
+      const containerParents = (containerProcessIn.get(cur) || [])
+        .filter(id => { const n = nodeById.get(id); return n && nb_isContainer(n); });
+      if (containerParents.length === 0) return cur;
+      cur = containerParents[0];
+    }
+    return cur;
+  }
+
+  // Compute non-empty for each container — prior-ancestors-only rule:
+  //
+  //   A container is non-empty ⟺ at least one container BEFORE it in the chain
+  //   (i.e., an ancestor via container→container process edges) has ≥1 add edge.
+  //   The current container's own add edges are IGNORED for this determination.
+  //
+  //   • con1 (chain-first, no prior containers): always empty.
+  //   • con4 (continuation): non-empty iff any of con1/con2/con3 has adds,
+  //     regardless of whether con4 itself has any adds.
+  //
+  //   Computed with memoised recursion:
+  //     non-empty(c) = parentHasAdds(c) OR non-empty(parent(c))
+  const containerNonEmpty = new Map();
+  function computeContainerNonEmpty(id, inProgress = new Set()) {
+    if (containerNonEmpty.has(id)) return containerNonEmpty.get(id);
+    if (inProgress.has(id)) return false; // cycle guard
+    inProgress.add(id);
+
+    const containerParents = (containerProcessIn.get(id) || [])
+      .filter(pid => { const p = nodeById.get(pid); return p && nb_isContainer(p); });
+
+    if (containerParents.length === 0) {
+      // Chain-first: no prior container → always empty
+      containerNonEmpty.set(id, false);
+      return false;
+    }
+
+    // Non-empty if any direct container parent has adds OR is itself non-empty
+    let result = false;
+    for (const pid of containerParents) {
+      const parentHasAdds = edgesDedup.some(
+        e => e.target === pid && isAddEdge(e) && nodeIds.has(e.source)
+      );
+      if (parentHasAdds || computeContainerNonEmpty(pid, inProgress)) {
+        result = true;
+        break;
+      }
+    }
+    containerNonEmpty.set(id, result);
+    return result;
+  }
+  nodes.forEach(n => {
+    if (!nb_isContainer(n)) return;
+    computeContainerNonEmpty(n.id);
+  });
+
+  // ── Debug: print all container aux nodes with empty/non-empty status ────────
+  {
+    const containerNodes = nodes.filter(n => nb_isContainer(n));
+    if (containerNodes.length > 0) {
+      console.log(`[container-debug] total containers: ${containerNodes.length}`);
+      containerNodes.forEach(n => {
+        const isEmpty = !containerNonEmpty.get(n.id);
+        const procParents = (containerProcessIn.get(n.id) || []);
+        const addCount = containerAddInCount.get(n.id) || 0;
+        const contParents = procParents.filter(pid => { const p = nodeById.get(pid); return p && nb_isContainer(p); });
+        const nonContParents = procParents.filter(pid => { const p = nodeById.get(pid); return p && !nb_isContainer(p); });
+        console.log(
+          `[container] ${n.id}(${n.kind}) → ${isEmpty ? "EMPTY" : "NON-EMPTY"}` +
+          ` | addIns=${addCount}` +
+          ` | contParents=[${contParents.join(",")}]` +
+          ` | nonContParents=[${nonContParents.join(",")}]`
+        );
+      });
+    }
+  }
+
+  // Precompute: which only_r1/only_r2 nodes are "inline" on the merged spine.
+  // An inline only-node's process edge to a merged node is same-branch (not cross).
+  //
+  // Three sources of inline status:
+  //   1. Direct: node receives a process edge FROM a merged node
+  //
+  // Empty containers (of any kind) are treated as same-branch in adjAll directly.
+  // Only non-empty containers represent a truly separate branch being merged in.
+  const onlyHasMergedProcIn = new Set();
+
+  // Pass 1: direct merged→only process connections
+  for (const e of edgesDedup) {
+    if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+    if (isAddEdge(e)) continue;
+    const src = nodeById.get(e.source);
+    const tgt = nodeById.get(e.target);
+    if (!src || !tgt) continue;
+    const srcIsMerged = src.kind === "merged_exact" || src.kind === "merged_similar";
+    const tgtIsOnly   = tgt.kind === "only_r1" || tgt.kind === "only_r2";
+    if (srcIsMerged && tgtIsOnly) onlyHasMergedProcIn.add(tgt.id);
+  }
+
+  const adjAll = new Map(nodes.map(n => [n.id, new Set()]));
+  for (const e of edgesDedup) {
+    if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+    if (isAddEdge(e)) {
+      const tgt = nodeById.get(e.target);
+      if (!tgt || !nb_isContainer(tgt)) continue;   // add → non-container → cross
+      if (containerNonEmpty.get(tgt.id)) continue;  // add → non-empty container → cross
+      // Falls through: add → empty container (any kind: merged or only) → same branch
+    } else {
+      // Process edge: only→merged is cross when src is not inline on the merged spine.
+      const src = nodeById.get(e.source);
+      const tgt = nodeById.get(e.target);
+      if (src && tgt) {
+        const srcIsOnly   = src.kind === "only_r1" || src.kind === "only_r2";
+        const tgtIsMerged = tgt.kind === "merged_exact" || tgt.kind === "merged_similar";
+        if (srcIsOnly && tgtIsMerged && !onlyHasMergedProcIn.has(e.source)) {
+          // Cross — unless src is an empty container (same branch)
+          const srcIsEmptyContainer = nb_isContainer(src) && !containerNonEmpty.get(src.id);
+          if (!srcIsEmptyContainer) continue;
+        }
+      }
+    }
+    adjAll.get(e.source).add(e.target);
+    adjAll.get(e.target).add(e.source);
+  }
+  const compOf = new Map();
+  let nextComp = 0;
+  function bfsComp(startId, comp) {
+    const q = [startId];
+    while (q.length) {
+      const id = q.shift();
+      if (compOf.has(id)) continue;
+      compOf.set(id, comp);
+      for (const nb of (adjAll.get(id) || [])) if (!compOf.has(nb)) q.push(nb);
+    }
+  }
+  for (const n of nodes) if (!compOf.has(n.id)) bfsComp(n.id, nextComp++);
+
+  const compGroups = new Map();
+  for (const n of mainNodes) {
+    const c = compOf.get(n.id) ?? 0;
+    if (!compGroups.has(c)) compGroups.set(c, []);
+    compGroups.get(c).push(n.id);
+  }
+  // Sort components by earliest topo level → top row first
+  const compOrder = [...compGroups.keys()].sort((a, b) => {
+    const minLvl = ids => Math.min(...ids.map(id => globalLevel.get(id) || 0));
+    return minLvl(compGroups.get(a)) - minLvl(compGroups.get(b));
+  });
+  // ── Step 4: Assign X and Y ──────────────────────────────────────────────
+  // Vertical layout rule:
+  //   • Merged/shared branches  → center zone, stacked downward from NB_BASE_Y
+  //   • only_r1 branches        → ABOVE NB_BASE_Y, stacked upward
+  //   • only_r2 branches        → BELOW merged, stacked downward
+  // A component is "r1" if it contains only_r1 nodes and no only_r2; "r2" vice-versa;
+  // otherwise "merged" (has merged nodes or a cross-kind mix).
+
+  function compKind(comp) {
+    const ids = compGroups.get(comp) || [];
+    let r1 = 0, r2 = 0;
+    for (const id of ids) {
+      const n = nodeById.get(id);
+      if (!n) continue;
+      // Any merged node in the comp → definitively a "merged" comp,
+      // regardless of how many only_r1/only_r2 nodes are also present.
+      if (n.kind === "merged_exact" || n.kind === "merged_similar") return "merged";
+      if (n.kind === "only_r1") r1++;
+      else if (n.kind === "only_r2") r2++;
+    }
+    if (r1 > 0 && r2 === 0) return "r1";
+    if (r2 > 0 && r1 === 0) return "r2";
+    return "merged";
+  }
+
+  // compOrder is already sorted by min topo level.
+  const mergedComps = compOrder.filter(c => compKind(c) === "merged");
+  const r1Comps     = compOrder.filter(c => compKind(c) === "r1");
+  const r2Comps     = compOrder.filter(c => compKind(c) === "r2");
+
+  const compCenterY = new Map();
+
+  // ── Non-overlap spacing based on actual node visual sizes ──────────────────
+  // Main node: outerR=24, dumbbell halfOffset=25 (outerR+1)
+  // Merged comp visual half-height from its center: halfOff_m + outerR_m = 49
+  // R1/R2-only comp visual half-height: outerR_m = 24
+  const outerR_m     = 24;   // main node outer radius
+  const halfOff_m    = 25;   // main dumbbell halfOffset
+  const BRANCH_MARGIN = 80;  // minimum visual gap (px) between edges of adjacent branches
+
+  // Step between two consecutive r1/r2-only comps (circle nodes only)
+  const onlyBranchStep  = 2 * outerR_m + BRANCH_MARGIN;   // 128 px
+
+  // Step from a merged comp's center to an adjacent r1/r2-only comp's center
+  //   merged visual edge: (halfOff_m + outerR_m) = 49
+  //   r1/r2 node radius: outerR_m = 24
+  //   center-to-center: 49 + BRANCH_MARGIN + 24 = 153 px
+  const mergedToOnlyStep = halfOff_m + outerR_m + BRANCH_MARGIN + outerR_m;  // 153
+
+  // Step between two consecutive merged comps
+  //   each has visual half-height (halfOff_m + outerR_m) = 49
+  //   center-to-center: 49 + BRANCH_MARGIN + 49 = 178 px
+  const mergedBranchStep = 2 * (halfOff_m + outerR_m) + BRANCH_MARGIN;       // 178
+
+  if (mergedComps.length === 0) {
+    // No merged branches: stack all pure r1/r2 comps downward from NB_BASE_Y
+    [...r1Comps, ...r2Comps].forEach((comp, i) => {
+      compCenterY.set(comp, NB_BASE_Y + i * onlyBranchStep);
+    });
+  } else {
+    // ── Merged comps: downward from NB_BASE_Y ──────────────────────────────
+    mergedComps.forEach((comp, i) => {
+      compCenterY.set(comp, NB_BASE_Y + i * mergedBranchStep);
+    });
+
+    const firstMergedY = NB_BASE_Y;
+    const lastMergedY  = NB_BASE_Y + (mergedComps.length - 1) * mergedBranchStep;
+
+    // ── R1 comps: stack UPWARD from first merged comp ─────────────────────
+    // r1Comps is in ascending topo order (index 0 = lowest topo = "branch1").
+    // Rule: branch1 (lowest topo) is closest to merged = bottom of R1 stack.
+    //   → r1Comps[0] gets the HIGHEST Y (closest to merged top)
+    //   → r1Comps[N-1] gets the LOWEST Y (furthest above)
+    // Add edge from r1Comps[i] → r1Comps[i+1] goes upward (↑) = diagonal ✓
+    // Final add from r1Comps[N-1] → merged container goes downward (↓) = diagonal ✓
+    const r1ClosestY = firstMergedY - mergedToOnlyStep;
+    r1Comps.forEach((comp, i) => {
+      compCenterY.set(comp, r1ClosestY - i * onlyBranchStep);
+    });
+
+    // ── R2 comps: stack DOWNWARD from last merged comp ────────────────────
+    // r2Comps[0] (lowest topo = "branch1") is CLOSEST to merged = top of R2 stack.
+    //   → r2Comps[0] gets the SMALLEST Y (closest to merged bottom)
+    //   → r2Comps[N-1] gets the LARGEST Y (furthest below)
+    // "From bottom to top: N, N-1, ..., 1" ↔ "从下到上是321" ✓
+    const r2ClosestY = lastMergedY + mergedToOnlyStep;
+    r2Comps.forEach((comp, i) => {
+      compCenterY.set(comp, r2ClosestY + i * onlyBranchStep);
     });
   }
- 
-  return branches;
+
+  compOrder.forEach(comp => {
+    const centerY = compCenterY.get(comp) ?? NB_BASE_Y;
+    const ck = compKind(comp);
+    for (const id of (compGroups.get(comp) || [])) {
+      const node = nodeById.get(id);
+      if (!node) continue;
+      node.x = NB_BASE_X + (globalLevel.get(id) || 0) * NB_SPINE_X_GAP;
+      if (ck === "merged") {
+        if (node.kind === "only_r1")      node.y = centerY - mainHalfOffset;
+        else if (node.kind === "only_r2") node.y = centerY + mainHalfOffset;
+        else                              node.y = centerY;
+      } else {
+        node.y = centerY;
+      }
+    }
+  });
+
+  // ── Step 4f: Intra-comp fork Y spreading ──────────────────────────────────────
+  // Rules:
+  //  • In a "merged" comp, only merged_* children that are NOT junction nodes
+  //    (junction = has outgoing intra-comp add edges) count as real fork branches.
+  //  • only_r1/only_r2 children and junction nodes inherit their parent's yOff;
+  //    the ±mainHalfOffset already visually separates only_* nodes at render time.
+  //  • After BFS, junction nodes get their yOff pulled halfway toward their
+  //    add-target's yOff, so they visually "route" toward the destination branch.
+  //  • X-alignment of fork siblings is skipped for any node whose move would
+  //    push it past an add-edge target (which would reverse that edge direction).
+  {
+    const mergedKindSet = new Set(['merged_exact', 'merged_similar']);
+
+    for (const comp of compOrder) {
+      const ids = compGroups.get(comp) || [];
+      if (ids.length <= 1) continue;
+
+      const idSet  = new Set(ids);
+      const ck     = compKind(comp);
+      const centerY = compCenterY.get(comp) ?? NB_BASE_Y;
+
+      // Build intra-comp outgoing process adjacency and in-degree
+      const procOut    = new Map(ids.map(id => [id, []]));
+      const inDegIntra = new Map(ids.map(id => [id, 0]));
+      for (const e of edgesDedup) {
+        if (isAddEdge(e)) continue;
+        if (!idSet.has(e.source) || !idSet.has(e.target)) continue;
+        procOut.get(e.source).push(e.target);
+        inDegIntra.set(e.target, inDegIntra.get(e.target) + 1);
+      }
+
+      // Skip comp if no intra-comp fork exists
+      if (!ids.some(id => procOut.get(id).length >= 2)) continue;
+
+      const yOff      = new Map(ids.map(id => [id, 0]));
+      const forkGroups = [];
+      const queue      = ids.filter(id => inDegIntra.get(id) === 0);
+      const forkStep   = mergedBranchStep;
+
+      while (queue.length > 0) {
+        const id       = queue.shift();
+        const children = procOut.get(id) || [];
+        const parentOff = yOff.get(id) ?? 0;
+
+        // Partition children into true fork branches vs. "side" nodes that inherit Y.
+        let trueKids = children;
+        let sideKids = [];
+
+        if (ck === 'merged' && children.length >= 2) {
+          // only_r1/r2 nodes are always "side" (mainHalfOffset handles visual offset)
+          const mergedKids = children.filter(cid => {
+            const cn = nodeById.get(cid);
+            return cn && mergedKindSet.has(cn.kind);
+          });
+          // Junction merged nodes (those that add INTO another comp node) are "side"
+          const junctionKids = mergedKids.filter(cid =>
+            edgesDedup.some(e => isAddEdge(e) && e.source === cid && idSet.has(e.target))
+          );
+          const contKids = mergedKids.filter(cid =>
+            !edgesDedup.some(e => isAddEdge(e) && e.source === cid && idSet.has(e.target))
+          );
+          sideKids = [
+            ...children.filter(cid => { const cn = nodeById.get(cid); return cn && !mergedKindSet.has(cn.kind); }),
+            ...junctionKids
+          ];
+          trueKids = contKids;
+        }
+
+        const n = trueKids.length;
+        if (n >= 2) {
+          trueKids.forEach((child, i) => {
+            yOff.set(child, parentOff + (i - (n - 1) / 2) * forkStep);
+          });
+          forkGroups.push({ parentId: id, children: [...trueKids] });
+        } else if (n === 1) {
+          yOff.set(trueKids[0], parentOff); // straight-through: inherit
+        }
+
+        // Side kids (only_r1/r2 and junction nodes) always inherit parent's yOff
+        for (const child of sideKids) {
+          yOff.set(child, parentOff);
+        }
+
+        for (const child of children) {
+          inDegIntra.set(child, inDegIntra.get(child) - 1);
+          if (inDegIntra.get(child) === 0) queue.push(child);
+        }
+      }
+
+      // Post-pass: pull junction nodes halfway toward their add-target's yOff.
+      // This routes them visually between their source branch and destination branch.
+      if (ck === 'merged') {
+        for (const id of ids) {
+          const cn = nodeById.get(id);
+          if (!cn || !mergedKindSet.has(cn.kind)) continue;
+          const addTargetIds = edgesDedup
+            .filter(e => isAddEdge(e) && e.source === id && idSet.has(e.target))
+            .map(e => e.target);
+          if (addTargetIds.length === 0) continue;
+          const targetOffAvg = addTargetIds.reduce((s, tid) => s + (yOff.get(tid) ?? 0), 0) / addTargetIds.length;
+          const srcOff = yOff.get(id) ?? 0;
+          yOff.set(id, (srcOff + targetOffAvg) / 2);
+        }
+      }
+
+      // Apply Y offsets on top of compCenterY
+      for (const id of ids) {
+        const node = nodeById.get(id);
+        if (!node) continue;
+        const off = yOff.get(id) ?? 0;
+        if (ck === 'merged') {
+          if (node.kind === 'only_r1')      node.y = centerY + off - mainHalfOffset;
+          else if (node.kind === 'only_r2') node.y = centerY + off + mainHalfOffset;
+          else                              node.y = centerY + off;
+        } else {
+          node.y = centerY + off;
+        }
+      }
+
+      // X-align fork siblings: move each entry node to maxX (the rightmost sibling),
+      // then BFS-propagate the same delta through their downstream sub-tree.
+      // A descendant is shifted only if:
+      //   (a) ALL its intra-comp process parents are already in the shifted set, AND
+      //   (b) shifting it would NOT push it past any of its outgoing add-edge targets
+      //       (which would reverse those edges).
+      for (const { parentId, children } of forkGroups) {
+        const childNodes = children.map(id => nodeById.get(id)).filter(Boolean);
+        if (childNodes.length < 2) continue;
+        const maxX = Math.max(...childNodes.map(n => n.x));
+        for (const cn of childNodes) {
+          if (cn.x >= maxX) continue;
+          // Would moving cn itself to maxX reverse any of its outgoing add edges?
+          const wouldReverse = edgesDedup.some(e => {
+            if (!isAddEdge(e) || e.source !== cn.id) return false;
+            const tgt = nodeById.get(e.target);
+            return tgt && tgt.x < maxX;
+          });
+          if (wouldReverse) continue;
+
+          const delta = maxX - cn.x;
+          cn.x = maxX;
+
+          // BFS propagation: shift the entire downstream sub-tree by the same delta.
+          const shifted = new Set([cn.id]);
+          const shiftQ  = [cn.id];
+
+          while (shiftQ.length > 0) {
+            const sid = shiftQ.shift();
+            for (const e of edgesDedup) {
+              if (isAddEdge(e) || e.source !== sid || !idSet.has(e.target)) continue;
+              const kid = nodeById.get(e.target);
+              if (!kid || shifted.has(e.target)) continue;
+              // Only shift if ALL intra-comp process parents of kid are already shifted
+              const allParentsShifted = !edgesDedup.some(pe =>
+                !isAddEdge(pe) && pe.target === e.target &&
+                idSet.has(pe.source) && !shifted.has(pe.source)
+              );
+              if (!allParentsShifted) continue;
+              // Only shift if it won't reverse any outgoing add edge
+              const breaks = edgesDedup.some(ae => {
+                if (!isAddEdge(ae) || ae.source !== e.target) return false;
+                const t = nodeById.get(ae.target);
+                return t && t.x < kid.x + delta;
+              });
+              if (!breaks) {
+                kid.x += delta;
+                shifted.add(e.target);
+                shiftQ.push(e.target);
+              }
+            }
+          }
+        }
+      }
+
+      // DEBUG
+      console.group(`[4f] comp=${comp} (${ids.length} nodes, centerY=${centerY.toFixed(0)}, ck=${ck})`);
+      for (const id of ids) {
+        const node = nodeById.get(id);
+        if (!node) continue;
+        console.log(`  ${id} kind=${node.kind} lvl=${globalLevel.get(id)} x=${node.x.toFixed(0)} y=${node.y.toFixed(0)} yOff=${(yOff.get(id)??0).toFixed(0)}`);
+      }
+      for (const { parentId, children } of forkGroups) {
+        console.log(`  FORK parent=${parentId} → [${children.map(c => `${c}(yOff=${(yOff.get(c)??0).toFixed(0)},x=${(nodeById.get(c)?.x??0).toFixed(0)})`).join(', ')}]`);
+      }
+      console.groupEnd();
+    }
+  }
+
+  // ── Step 4b: Junction alignment ────────────────────────────────────────────
+  // When an only_r1/only_r2 parallel chain (no merged proc-predecessor) feeds into a
+  // merged_similar node via a process edge, that is the "junction": shift the merged
+  // node so its upper/lower circle aligns with the only branch's Y (horizontal edge),
+  // then propagate that new centerY to all downstream nodes in the same merged comp.
+  //
+  // We process junctions in topological order (earliest target level first) and apply
+  // each immediately. This ensures that when an only node has been junction-aligned
+  // (e.g. only_r1 M12 in comp4 moves from y=511 to y=27), any downstream comp that
+  // uses M12 as its junction source (e.g. comp5 via M12→M13) sees the updated Y,
+  // giving the correct cy (52) instead of the stale pre-move cy (536).
+  {
+    // Collect all only→merged junction edges
+    const junctionEdges = [];
+    for (const e of edgesDedup) {
+      if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+      if (isAddEdge(e)) continue;
+      const src = nodeById.get(e.source);
+      const tgt = nodeById.get(e.target);
+      if (!src || !tgt) continue;
+      const srcIsOnly   = src.kind === "only_r1" || src.kind === "only_r2";
+      const tgtIsMerged = tgt.kind === "merged_exact" || tgt.kind === "merged_similar";
+      // Empty containers are same-branch → skip junction realignment for them
+      if (!srcIsOnly || !tgtIsMerged || onlyHasMergedProcIn.has(e.source)) continue;
+      if (nb_isContainer(src) && !containerNonEmpty.get(src.id)) continue;
+      junctionEdges.push({ src, tgt, tgtLevel: globalLevel.get(tgt.id) || 0 });
+    }
+
+    // Sort by topo level: process upstream junctions first so downstream ones
+    // see already-updated src.y values.
+    junctionEdges.sort((a, b) => a.tgtLevel - b.tgtLevel);
+
+    const compJunctionApplied = new Set();
+    const compJunctionLog = [];
+
+    for (const { src, tgt, tgtLevel } of junctionEdges) {
+      const tgtComp = compOf.get(tgt.id);
+      // Only the first (lowest topo level) junction per comp wins
+      if (compJunctionApplied.has(tgtComp)) continue;
+
+      // Use current src.y — may already have been updated by a prior junction
+      const cy = src.kind === "only_r1"
+        ? src.y + mainHalfOffset   // upper circle aligns with r1 Y
+        : src.y - mainHalfOffset;  // lower circle aligns with r2 Y
+
+      const defaultY = compCenterY.get(tgtComp) ?? NB_BASE_Y;
+      if (Math.abs(cy - defaultY) < 1) continue; // no-op junction, skip
+
+      compJunctionLog.push(`comp${tgtComp}: ${src.id}(${src.kind} y=${src.y})→${tgt.id} jLvl=${tgtLevel} cy=${cy}`);
+
+      // Apply immediately so downstream junctions use the updated Ys
+      mainNodes.forEach(node => {
+        if (compOf.get(node.id) !== tgtComp) return;
+        const lvl = globalLevel.get(node.id) || 0;
+        if (lvl < tgtLevel) return;
+        const oldY = node.y;
+        if (node.kind === "only_r1")      node.y = cy - mainHalfOffset;
+        else if (node.kind === "only_r2") node.y = cy + mainHalfOffset;
+        else                              node.y = cy;
+        console.log(`[4b-MOVE] ${node.id}(${node.kind}) lvl=${lvl} comp=${tgtComp} y: ${oldY} → ${node.y} (jCY=${cy})`);
+      });
+      compJunctionApplied.add(tgtComp);
+    }
+
+    console.log(`[4b] junctions applied:`, compJunctionLog);
+  }
+
+  // ── Step 4c: Anchor-based r1/r2 comp repositioning ───────────────────────
+  // Rule: if a merged comp M has a cross-branch add edge to an r1 comp O,
+  // position O at M.topCircle - (BRANCH_MARGIN + outerR_m) = M.center - mergedToOnlyStep.
+  // Symmetrically for r2: position at M.bottomCircle + gap = M.center + mergedToOnlyStep.
+  //
+  // We use the FINAL merged comp center Y (after any 4b junction alignment), so that
+  // O stays symmetric around M regardless of where M ended up.
+  //
+  // Multiple r1 comps anchored to the same merged comp are stacked upward in order;
+  // if an r1 comp has no cross-branch add-edge anchor, it falls back to the
+  // firstMergedComp delta shift.
+  if (mergedComps.length > 0) {
+    // Helper: final center Y of a merged comp after 4b
+    function getMergedCompFinalY(comp) {
+      for (const id of (compGroups.get(comp) || [])) {
+        const n = nodeById.get(id);
+        if (!n) continue;
+        if (n.kind === "merged_exact" || n.kind === "merged_similar") return n.y;
+      }
+      return compCenterY.get(comp) ?? NB_BASE_Y;
+    }
+
+    // Build per-r1-comp and per-r2-comp anchor: the merged comp connected via
+    // a cross-branch add edge.  We take the FIRST such edge found (lowest-topo
+    // source preferred since edgesDedup is already in graph order).
+    const r1AnchorOf = new Map(); // r1 comp id → merged comp id
+    const r2AnchorOf = new Map(); // r2 comp id → merged comp id
+
+    for (const e of edgesDedup) {
+      if (!isAddEdge(e)) continue;
+      if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+      const sc = compOf.get(e.source);
+      const tc = compOf.get(e.target);
+      if (sc === undefined || tc === undefined || sc === tc) continue;
+      const sk = compKind(sc);
+      const tk = compKind(tc);
+      // merged → r1 or r1 → merged
+      if (sk === "merged" && tk === "r1" && !r1AnchorOf.has(tc)) r1AnchorOf.set(tc, sc);
+      if (tk === "merged" && sk === "r1" && !r1AnchorOf.has(sc)) r1AnchorOf.set(sc, tc);
+      // merged → r2 or r2 → merged
+      if (sk === "merged" && tk === "r2" && !r2AnchorOf.has(tc)) r2AnchorOf.set(tc, sc);
+      if (tk === "merged" && sk === "r2" && !r2AnchorOf.has(sc)) r2AnchorOf.set(sc, tc);
+    }
+
+    console.log(`[4c] r1 anchors:`, [...r1AnchorOf.entries()].map(([c,a])=>`comp${c}→comp${a}`));
+    console.log(`[4c] r2 anchors:`, [...r2AnchorOf.entries()].map(([c,a])=>`comp${c}→comp${a}`));
+
+    // Group r1 comps by their anchor merged comp (preserving r1Comps order within each group)
+    const r1Groups = new Map(); // anchor merged comp id (or null) → [r1 comp, ...]
+    r1Comps.forEach(comp => {
+      const a = r1AnchorOf.get(comp) ?? null;
+      if (!r1Groups.has(a)) r1Groups.set(a, []);
+      r1Groups.get(a).push(comp);
+    });
+
+    const r2Groups = new Map();
+    r2Comps.forEach(comp => {
+      const a = r2AnchorOf.get(comp) ?? null;
+      if (!r2Groups.has(a)) r2Groups.set(a, []);
+      r2Groups.get(a).push(comp);
+    });
+
+    // Place r1 comps that have an explicit anchor
+    for (const [anchorComp, comps] of r1Groups) {
+      if (anchorComp === null) continue;
+      const anchorY = getMergedCompFinalY(anchorComp);
+      comps.forEach((comp, i) => {
+        const newY = anchorY - mergedToOnlyStep - i * onlyBranchStep;
+        compCenterY.set(comp, newY);
+        for (const id of (compGroups.get(comp) || [])) {
+          const node = nodeById.get(id);
+          if (node) { console.log(`[4c-r1] ${node.id} y:${node.y}→${newY} anchor=comp${anchorComp}`); node.y = newY; }
+        }
+      });
+    }
+
+    // Place r2 comps that have an explicit anchor
+    for (const [anchorComp, comps] of r2Groups) {
+      if (anchorComp === null) continue;
+      const anchorY = getMergedCompFinalY(anchorComp);
+      comps.forEach((comp, i) => {
+        const newY = anchorY + mergedToOnlyStep + i * onlyBranchStep;
+        compCenterY.set(comp, newY);
+        for (const id of (compGroups.get(comp) || [])) {
+          const node = nodeById.get(id);
+          if (node) { console.log(`[4c-r2] ${node.id} y:${node.y}→${newY} anchor=comp${anchorComp}`); node.y = newY; }
+        }
+      });
+    }
+
+    // Fallback: r1/r2 comps with no anchor → shift by same delta as first/last merged comp
+    const origFirstMergedY = NB_BASE_Y;
+    const origLastMergedY  = NB_BASE_Y + (mergedComps.length - 1) * mergedBranchStep;
+
+    const noAnchorR1 = r1Groups.get(null) || [];
+    if (noAnchorR1.length > 0) {
+      const finalFirstY = getMergedCompFinalY(mergedComps[0]);
+      const delta = finalFirstY - origFirstMergedY;
+      if (Math.abs(delta) > 0.5) {
+        const newR1ClosestY = finalFirstY - mergedToOnlyStep;
+        noAnchorR1.forEach((comp, i) => {
+          const newY = newR1ClosestY - i * onlyBranchStep;
+          compCenterY.set(comp, newY);
+          for (const id of (compGroups.get(comp) || [])) {
+            const node = nodeById.get(id);
+            if (node) node.y = newY;
+          }
+        });
+      }
+    }
+
+    const noAnchorR2 = r2Groups.get(null) || [];
+    if (noAnchorR2.length > 0) {
+      const finalLastY = getMergedCompFinalY(mergedComps[mergedComps.length - 1]);
+      const delta = finalLastY - origLastMergedY;
+      if (Math.abs(delta) > 0.5) {
+        const newR2ClosestY = finalLastY + mergedToOnlyStep;
+        noAnchorR2.forEach((comp, i) => {
+          const newY = newR2ClosestY + i * onlyBranchStep;
+          compCenterY.set(comp, newY);
+          for (const id of (compGroups.get(comp) || [])) {
+            const node = nodeById.get(id);
+            if (node) node.y = newY;
+          }
+        });
+      }
+    }
+
+    // ── Step 4d: Center merged comps that receive from both r1 and r2 ──────────
+    // When a merged comp M12 receives process edges from BOTH an only_r1 comp AND
+    // an only_r2 comp that share the same anchor merged comp (e.g. M6), place M12
+    // at M6's center Y.  This means "the branch closes back onto M6's horizontal
+    // center line", so M12 and all downstream nodes in M12's spine stay at M6.y.
+    //
+    // Also handles the case where two independent only_r1 / only_r2 comps (no
+    // shared merged-comp anchor) converge into a merged comp: center at the
+    // midpoint of their Y positions.
+    {
+      // Build: merged comp → Set of only-comp sources (via process edges)
+      const mergedProcSources = new Map(); // merged comp id → Set of only comp ids
+      for (const e of edgesDedup) {
+        if (isAddEdge(e)) continue;
+        if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+        const src = nodeById.get(e.source);
+        const tgt = nodeById.get(e.target);
+        if (!src || !tgt) continue;
+        const srcIsOnly   = src.kind === "only_r1" || src.kind === "only_r2";
+        const tgtIsMerged = tgt.kind === "merged_exact" || tgt.kind === "merged_similar";
+        if (!srcIsOnly || !tgtIsMerged) continue;
+        const sc = compOf.get(src.id);
+        const tc = compOf.get(tgt.id);
+        if (sc === undefined || tc === undefined) continue;
+        if (!mergedProcSources.has(tc)) mergedProcSources.set(tc, new Set());
+        mergedProcSources.get(tc).add(sc);
+      }
+
+      for (const [mergedComp, srcCompSet] of mergedProcSources) {
+        const srcList = [...srcCompSet];
+        const r1Srcs = srcList.filter(c => compKind(c) === "r1");
+        const r2Srcs = srcList.filter(c => compKind(c) === "r2");
+        if (r1Srcs.length === 0 || r2Srcs.length === 0) continue;
+
+        let newCY = null;
+
+        // Case A: r1 and r2 sources share a common anchor merged comp → use that anchor's Y
+        outer4d:
+        for (const r1c of r1Srcs) {
+          const anch1 = r1AnchorOf.get(r1c);
+          if (anch1 === undefined) continue;
+          for (const r2c of r2Srcs) {
+            if (r2AnchorOf.get(r2c) === anch1) {
+              newCY = getMergedCompFinalY(anch1);
+              console.log(`[4d] comp${mergedComp}: r1=comp${r1c} r2=comp${r2c} share anchor=comp${anch1} → cy=${newCY}`);
+              break outer4d;
+            }
+          }
+        }
+
+        // Case B: no shared anchor → center at midpoint of the r1 and r2 comp Ys
+        if (newCY === null) {
+          const r1Y = compCenterY.get(r1Srcs[0]);
+          const r2Y = compCenterY.get(r2Srcs[0]);
+          if (r1Y !== undefined && r2Y !== undefined) {
+            newCY = (r1Y + r2Y) / 2;
+            console.log(`[4d] comp${mergedComp}: no shared anchor, midpoint r1Y=${r1Y} r2Y=${r2Y} → cy=${newCY}`);
+          }
+        }
+
+        if (newCY === null) continue;
+
+        // Apply newCY to all nodes in this merged comp at or after the junction level
+        const minJunctionLevel = Math.min(
+          ...srcList.map(sc => {
+            let minLvl = Infinity;
+            for (const id of (compGroups.get(sc) || [])) minLvl = Math.min(minLvl, globalLevel.get(id) || 0);
+            return minLvl;
+          })
+        );
+
+        mainNodes.forEach(node => {
+          if (compOf.get(node.id) !== mergedComp) return;
+          const lvl = globalLevel.get(node.id) || 0;
+          if (lvl < minJunctionLevel) return; // don't move pre-junction nodes
+          const oldY = node.y;
+          if (node.kind === "only_r1")      node.y = newCY - mainHalfOffset;
+          else if (node.kind === "only_r2") node.y = newCY + mainHalfOffset;
+          else                              node.y = newCY;
+          console.log(`[4d-MOVE] ${node.id}(${node.kind}) lvl=${lvl} y:${oldY}→${node.y}`);
+        });
+        compCenterY.set(mergedComp, newCY);
+      }
+    }
+  }
+
+  // ── Step 4e: X-align parallel branch comps from same split source ────────────
+  // When a source node fans out via process edges to 2+ different comps, the entry
+  // node of each target comp should be at the SAME X (the rightmost one), so that
+  // "split → two dumbbells" always looks symmetric left-right.
+  // We shift the ENTIRE comp by delta so relative node spacing within it is preserved.
+  {
+    // Build: source node id → Map<target comp id, entry node (min X)>
+    const srcFanOut = new Map();
+    for (const e of edgesDedup) {
+      if (isAddEdge(e)) continue;
+      // Only fan-out via actual recipe split actions
+      if (e.action !== 'split') continue;
+      if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+      const sc = compOf.get(e.source);
+      const tc = compOf.get(e.target);
+      if (sc === undefined || tc === undefined || sc === tc) continue;
+      const tgtNode = nodeById.get(e.target);
+      if (!tgtNode) continue;
+      if (!srcFanOut.has(e.source)) srcFanOut.set(e.source, new Map());
+      const tgtMap = srcFanOut.get(e.source);
+      // Keep the entry node with smallest X for each target comp
+      if (!tgtMap.has(tc) || tgtNode.x < tgtMap.get(tc).x) tgtMap.set(tc, tgtNode);
+    }
+
+    for (const [, tgtMap] of srcFanOut) {
+      // Only align merged (dumbbell) comps — r1/r2 single-branch comps are not aligned
+      const mergedTargets = new Map(
+        [...tgtMap].filter(([compId]) => compKind(compId) === "merged")
+      );
+      if (mergedTargets.size < 2) continue;
+      // Find the max entry X among all merged target comps
+      let maxEntryX = 0;
+      for (const [, n] of mergedTargets) maxEntryX = Math.max(maxEntryX, n.x);
+      // Shift each merged comp that is behind maxEntryX
+      for (const [compId, entryNode] of mergedTargets) {
+        const delta = maxEntryX - entryNode.x;
+        if (delta < 0.5) continue;
+        for (const id of (compGroups.get(compId) || [])) {
+          const node = nodeById.get(id);
+          if (node) node.x += delta;
+        }
+      }
+    }
+  }
+
+  // ── Step 5: Aux node placement ─────────────────────────────────────────────
+  // Build per-node incoming edge list (deduplicated, ghost-guarded)
+  const inMapDedup = new Map(nodes.map(n => [n.id, []]));
+  for (const e of edgesDedup) {
+    if (!nodeIds.has(e.source)) continue;
+    inMapDedup.get(e.target).push(e);
+  }
+
+  const globalSpineSet = new Set(mainNodes.map(n => n.id));
+  const inMapFull      = nb_buildInMap(edges);   // for nb_collectAuxForSpineNode
+
+  const MAX_ROW = 5;
+
+  mainNodes.forEach(spineNode => {
+    const comp    = compOf.get(spineNode.id) ?? 0;
+    // Use the node's already-adjusted Y as the local centerY reference for aux placement.
+    // For merged comps this may differ from compCenterY after junction alignment.
+    const ck = compKind(comp);
+    const centerY = ck === "merged"
+      ? (spineNode.kind === "only_r1" ? spineNode.y + mainHalfOffset
+       : spineNode.kind === "only_r2" ? spineNode.y - mainHalfOffset
+       : spineNode.y)
+      : (compCenterY.get(comp) ?? NB_BASE_Y);
+
+    const auxNodes = nb_collectAuxForSpineNode(spineNode.id, inMapFull, nodeById, globalSpineSet);
+    if (auxNodes.length === 0) return;
+
+    const r1Aux = auxNodes.filter(n => n.kind === "only_r1");
+    const r2Aux = auxNodes.filter(n => n.kind === "only_r2");
+    const shAux = auxNodes.filter(n => n.kind !== "only_r1" && n.kind !== "only_r2");
+    // Descending: highest-indexed aux (last in chain, directly before spine) at col=0
+    // (closest to spine / rightmost), so edges within the aux chain flow left→right.
+    [r1Aux, r2Aux, shAux].forEach(g => g.sort((a, b) => nb_nodeIdx(b) - nb_nodeIdx(a)));
+
+    // Cross-branch detection: does spineNode receive any non-add edge from a main node?
+    // Yes → cross-branch merge → aux clusters above/below with full slope.
+    // No  → empty container → keep aux horizontal.
+    const incomingEdges = inMapDedup.get(spineNode.id) || [];
+    const hasCrossBranch = incomingEdges.some(
+      e => !isAddEdge(e) && mainIds.has(e.source) && nodeIds.has(e.source)
+    );
+
+    if (hasCrossBranch) {
+      // Sloped: aux clusters above (R1) / below (R2) the center axis
+      const r1Base = -(mainHalfOffset + NB_AUX_CROSS_EXTRA);
+      const r2Base =  (mainHalfOffset + NB_AUX_CROSS_EXTRA);
+      const shBase = -(auxHalfOffset  + 4);
+      function placeSloped(group, yBase, rowDir) {
+        group.forEach((aux, i) => {
+          const row = Math.floor(i / MAX_ROW);
+          const col = i % MAX_ROW;
+          aux.x = spineNode.x - NB_AUX_DX * (col + 1);
+          aux.y = centerY + yBase + row * NB_AUX_ROW_GAP * rowDir;
+        });
+      }
+      placeSloped(r1Aux, r1Base, -1);
+      placeSloped(r2Aux, r2Base, +1);
+      placeSloped(shAux, shBase, -1);
+    } else {
+      // Horizontal: aux at same Y as spineNode (empty container)
+      // Tiny +/- jitter separates R1/R2 to prevent overlap.
+      function placeHoriz(group, yJitter, rowDir) {
+        group.forEach((aux, i) => {
+          const row = Math.floor(i / MAX_ROW);
+          const col = i % MAX_ROW;
+          aux.x = spineNode.x - NB_AUX_DX * (col + 1);
+          aux.y = spineNode.y + yJitter + row * NB_AUX_ROW_GAP * rowDir;
+        });
+      }
+      placeHoriz(r1Aux, -NB_AUX_HORIZ_JITTER, -1);
+      placeHoriz(r2Aux,  NB_AUX_HORIZ_JITTER, +1);
+      placeHoriz(shAux, 0, -1);
+    }
+  });
+
+  // ── Fallback for any still-unpositioned node ───────────────────────────────
+  const allCompCenterYs = [...compCenterY.values()];
+  const maxCompY = allCompCenterYs.length ? Math.max(...allCompCenterYs) : NB_BASE_Y;
+  let fallbackX = NB_BASE_X;
+  nodes.forEach(n => {
+    if (n.x == null || n.y == null || Number.isNaN(n.x) || Number.isNaN(n.y)) {
+      n.x = fallbackX;
+      n.y = maxCompY + mergedToOnlyStep;
+      fallbackX += 60;
+    }
+  });
+
+  return compOrder.map((comp, i) => ({
+    index: i, type: 1,
+    spine: (compGroups.get(comp) || []).map(id => nodeById.get(id)).filter(Boolean)
+  }));
 }
 
 function renderGraph(graph) {
@@ -2752,8 +3682,22 @@ function renderGraph(graph) {
     return "";
   }
 
-    const sAnchor = effectiveAnchor(sNode, d.source_anchor, d.style, true);
-    const tAnchor = effectiveAnchor(tNode, d.target_anchor, d.style, false);
+    let sAnchor = effectiveAnchor(sNode, d.source_anchor, d.style, true);
+    let tAnchor = effectiveAnchor(tNode, d.target_anchor, d.style, false);
+
+    // For add edges: pin the dumbbell anchor to the side matching the other node's kind.
+    // This ensures all add edges from/to a dumbbell (merged_similar) land on the
+    // correct circle (T=r1, B=r2) regardless of edge style.
+    if (isAddEdge(d)) {
+      if (isDumbbellLike(sNode)) {
+        if (tNode.kind === "only_r1") sAnchor = "T";
+        else if (tNode.kind === "only_r2") sAnchor = "B";
+      }
+      if (isDumbbellLike(tNode)) {
+        if (sNode.kind === "only_r1") tAnchor = "T";
+        else if (sNode.kind === "only_r2") tAnchor = "B";
+      }
+    }
 
     const s0 = getAnchorPosition(sNode, sAnchor);
     const t0 = getAnchorPosition(tNode, tAnchor);
@@ -2816,8 +3760,19 @@ if (isMainToContainerEdge(d, sNode, tNode)) {
     return { x: -9999, y: -9999 };
   }
 
-    const sAnchor = effectiveAnchor(sNode, d.source_anchor, d.style, true);
-    const tAnchor = effectiveAnchor(tNode, d.target_anchor, d.style, false);
+    let sAnchor = effectiveAnchor(sNode, d.source_anchor, d.style, true);
+    let tAnchor = effectiveAnchor(tNode, d.target_anchor, d.style, false);
+
+    if (isAddEdge(d)) {
+      if (isDumbbellLike(sNode)) {
+        if (tNode.kind === "only_r1") sAnchor = "T";
+        else if (tNode.kind === "only_r2") sAnchor = "B";
+      }
+      if (isDumbbellLike(tNode)) {
+        if (sNode.kind === "only_r1") tAnchor = "T";
+        else if (sNode.kind === "only_r2") tAnchor = "B";
+      }
+    }
 
     const s0 = getAnchorPosition(sNode, sAnchor);
     const t0 = getAnchorPosition(tNode, tAnchor);
@@ -2833,15 +3788,20 @@ if (isMainToContainerEdge(d, sNode, tNode)) {
 
   function drawIcon(g, iconName, spec) {
     if (!iconName) return;
-
+    const url = `${API_BASE}/icons/${iconName}.png`;
     const size = spec.centerR * 1.6;
-    g.append("image")
-      .attr("href", `http://127.0.0.1:5500/data/icons/${iconName}.png`)
-      .attr("x", -size / 2)
-      .attr("y", -size / 2)
-      .attr("width", size)
-      .attr("height", size)
-      .attr("pointer-events", "none");
+    const img = new Image();
+    img.onload = () => {
+      g.append("image")
+        .attr("href", url)
+        .attr("xlink:href", url)
+        .attr("x", -size / 2)
+        .attr("y", -size / 2)
+        .attr("width", size)
+        .attr("height", size)
+        .attr("pointer-events", "none");
+    };
+    img.src = url;
   }
 
   svg.select("defs").remove();
@@ -3002,14 +3962,19 @@ if (isMainToContainerEdge(d, sNode, tNode)) {
 
     function drawContainerIcon(group, container) {
       if (!container || container === "none") return;
-
-      group.append("image")
-        .attr("href", `http://127.0.0.1:5500/data/icons/${container}.png`)
-        .attr("x", -8)
-        .attr("y", -18)
-        .attr("width", 16)
-        .attr("height", 16)
-        .attr("pointer-events", "none");
+      const url = `${API_BASE}/icons/${container}.png`;
+      const img = new Image();
+      img.onload = () => {
+        group.append("image")
+          .attr("href", url)
+          .attr("xlink:href", url)
+          .attr("x", -8)
+          .attr("y", -18)
+          .attr("width", 16)
+          .attr("height", 16)
+          .attr("pointer-events", "none");
+      };
+      img.src = url;
     }
 
     function drawSingleNode(cx, cy, node, recipeColor) {
@@ -3110,7 +4075,7 @@ if (greek) {
 
       top
         .on("mouseenter", function(event) {
-          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node));
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node, d.id));
         })
         .on("mousemove", function(event) {
           tooltip
@@ -3126,7 +4091,7 @@ if (greek) {
 
       bottom
         .on("mouseenter", function(event) {
-          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node));
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node, d.id));
         })
         .on("mousemove", function(event) {
           tooltip
@@ -3264,7 +4229,7 @@ if (bottomGreek) {
 
       top
         .on("mouseenter", function(event) {
-          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node));
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node, d.id));
         })
         .on("mousemove", function(event) {
           tooltip
@@ -3288,7 +4253,7 @@ if (bottomGreek) {
 
       bottom
         .on("mouseenter", function(event) {
-          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node));
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node, d.id));
         })
         .on("mousemove", function(event) {
           tooltip
@@ -3373,7 +4338,7 @@ if (bottomGreek) {
 
       tooltip
         .style("opacity", 1)
-        .html(nodeHalfTooltip(state, flavor, d.r1_node ?? d.r2_node));
+        .html(nodeHalfTooltip(state, flavor, d.r1_node ?? d.r2_node, d.id));
     })
     .on("mousemove", function(event) {
       tooltip
