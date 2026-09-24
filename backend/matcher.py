@@ -183,6 +183,10 @@ class SeqItem:
     key1: Tuple
     key2: Tuple
     state_out: Tuple
+    branch_label: Optional[str] = ""
+    branch_origins: frozenset = frozenset()
+    recipe_branches: frozenset = frozenset()
+    product_branch: Optional[str] = None
 
 
 @dataclass
@@ -426,11 +430,166 @@ def find_prev_main_transition(target_idx: int, node_map, in_map):
             }
             return src_idx, fake_edge, "aux"
 
+    # A real process can create a main product entirely from aux inputs.
+    # Do not invent a process from an add-only ingredient list.
+    for e in incoming:
+        src_idx = int(e["node1"])
+        src = node_map.get(src_idx)
+        if (src and norm_str(src.get("type")) == "aux"
+                and canon_action(e.get("action", "")) != "add"
+                and norm_str(e.get("type", "")) != "add"):
+            return src_idx, e, "aux_product"
+
     return None, None, None
+
+def build_branch_metadata(recipe):
+    """Track semantic labels and the initial main/container branches consumed.
+
+    Aux additions do not start or merge main branches. A real join preserves
+    its incoming spine label, then relabels its successor. Provenance is never
+    erased: equal names alone must not confuse pre-join and post-join stages.
+    """
+    node_map = build_node_map(recipe)
+    incoming = build_in_edge_map(recipe)
+    outgoing, parents = build_graph_maps(recipe)
+    remaining = {nid: len(parents[nid]) for nid in node_map}
+    queue = deque(sorted(nid for nid, count in remaining.items() if count == 0))
+    labels, origins, joins = {}, {}, {}
+    root_names = {}
+
+    while queue:
+        nid = queue.popleft()
+        edges = incoming.get(nid, [])
+        inherited = frozenset().union(*(origins[p] for p in parents[nid]))
+        if is_main_like(node_map[nid]) and not inherited:
+            inherited = frozenset({nid})
+            root_names[nid] = norm_str(node_map[nid].get("name", ""))
+            labels[nid] = root_names[nid]
+        elif not edges:
+            labels[nid] = norm_str(node_map[nid].get("name", ""))
+        else:
+            # Prefer the process spine and ignore aux-only additions when
+            # choosing the main branch that continues into this node.
+            primary = min(edges, key=lambda e: (
+                not bool(origins[int(e["node1"])]),
+                canon_action(e.get("action", "")) == "add"
+                or norm_str(e.get("type", "")) == "add",
+                int(e["index"]),
+            ))
+            src = int(primary["node1"])
+            labels[nid] = (norm_str(node_map[nid].get("name", ""))
+                           if joins[src] else labels[src])
+        # A split creates independently identifiable food branches. The
+        # parent's ingredient name is not their branch identity thereafter.
+        split_edges = [e for e in edges if canon_action(e.get("action", "")) == "split"]
+        if split_edges and is_main_like(node_map[nid]):
+            inherited = frozenset({nid}).union(*(origins[int(e["node1"])]
+                for e in edges if e not in split_edges))
+            root_names[nid] = norm_str(node_map[nid].get("name", ""))
+            labels[nid] = root_names[nid]
+        origins[nid] = inherited
+        contributing = [origins[p] for p in parents[nid] if origins[p]]
+        joins[nid] = (len(contributing) > 1
+                      and all(group != inherited for group in contributing))
+
+        for dst in outgoing.get(nid, []):
+            remaining[dst] -= 1
+            if remaining[dst] == 0:
+                queue.append(dst)
+
+    # Cycles and their downstream nodes remain visible but are ineligible
+    # for matching. Never guess a label or equate two unresolved nodes.
+    # A join node still describes the state before its incoming additions.
+    # Its successors see the union. Keep matching provenance consistent with
+    # the delayed-add features and label update boundary.
+    # Give container roots a food-flow identity. Bare names such as wok_pot
+    # otherwise alias every independent pan in a recipe. Stop at the first
+    # main product, so later assembly cannot relabel all pans as the final dish.
+    # These tokens remain in provenance after joining a food branch: shared
+    # pan preparation still distinguishes pre-join from post-join stages.
+    root_keys = dict(root_names)
+    for root in root_names:
+        if norm_str(node_map[root].get("type")) != "container":
+            continue
+        pending, seen, products = deque([root]), set(), set()
+        while pending:
+            current = pending.popleft()
+            if current in seen:
+                continue
+            seen.add(current)
+            if current != root and norm_str(node_map[current].get("type")) == "main":
+                products.add(norm_str(node_map[current].get("name", "")))
+                continue
+            pending.extend(outgoing.get(current, []))
+        # With no observable food product, a pot has no reliable counterpart.
+        # Keep the token recipe-local rather than matching on its vessel name.
+        role = tuple(sorted(products)) if products else ("unresolved", id(recipe), root)
+        root_keys[root] = ("container", root_names[root], role)
+
+    contexts = {}
+    for nid in node_map:
+        if nid not in labels:
+            labels[nid] = None
+            contexts[nid] = frozenset()
+            continue
+        context = origins[nid]
+        if joins[nid] and not any(canon_action(e.get("action", "")) == "split" for e in incoming[nid]):
+            primary = min(incoming[nid], key=lambda e: (
+                not bool(origins[int(e["node1"])]),
+                canon_action(e.get("action", "")) == "add"
+                or norm_str(e.get("type", "")) == "add",
+                int(e["index"]),
+            ))
+            context = origins[int(primary["node1"])]
+        contexts[nid] = frozenset(root_keys[root] for root in context)
+    return labels, contexts, frozenset(root_keys.values())
+
+
+def build_branch_labels(recipe: Dict[str, Any]) -> Dict[int, Optional[str]]:
+    return build_branch_metadata(recipe)[0]
+
+
+def unambiguous_product_branches(recipe, labels, origins):
+    """Product names can bridge unrelated roots only within a unique lineage.
+
+    Repeated stages are allowed on one causal chain with unchanged provenance.
+    Parallel products or a name reused before/after a join are ambiguous.
+    """
+    outgoing, _ = build_graph_maps(recipe)
+    named = defaultdict(list)
+    for node in recipe["nodes"]:
+        nid = int(node["index"])
+        name = norm_str(node.get("name", ""))
+        if name and norm_str(node.get("type")) == "main" and labels.get(nid) is not None:
+            named[name].append(nid)
+    descendants = {}
+    def reachable(nid):
+        if nid not in descendants:
+            seen, pending = set(), list(outgoing.get(nid, []))
+            while pending:
+                cur = pending.pop()
+                if cur in seen:
+                    continue
+                seen.add(cur)
+                pending.extend(outgoing.get(cur, []))
+            descendants[nid] = seen
+        return descendants[nid]
+    eligible = {}
+    for name, ids in named.items():
+        if len({origins[nid] for nid in ids}) != 1:
+            continue
+        if any(b not in reachable(a) and a not in reachable(b)
+               for i, a in enumerate(ids) for b in ids[i + 1:]):
+            continue
+        eligible.update((nid, name) for nid in ids)
+    return eligible
+
 
 def build_main_seq_items(recipe: Dict[str, Any], recipe_id: str) -> List[SeqItem]:
     node_map = build_node_map(recipe)
     in_map = build_in_edge_map(recipe)
+    branch_labels, branch_origins, recipe_branches = build_branch_metadata(recipe)
+    products = unambiguous_product_branches(recipe, branch_labels, branch_origins)
 
     main_nodes = sorted(
         [n for n in recipe["nodes"] if is_main_like(n)],
@@ -455,6 +614,10 @@ def build_main_seq_items(recipe: Dict[str, Any], recipe_id: str) -> List[SeqItem
                 key1=tr1(eff_edge, node_map),
                 key2=tr2(eff_edge, node_map),
                 state_out=state_key(v),
+                branch_label=branch_labels[v_idx],
+                branch_origins=branch_origins[v_idx],
+                recipe_branches=recipe_branches,
+                product_branch=products.get(v_idx),
             )
         )
 
@@ -478,6 +641,7 @@ def build_main_seq_items(recipe: Dict[str, Any], recipe_id: str) -> List[SeqItem
 def build_seq_items(recipe: Dict[str, Any], recipe_id: str) -> List[SeqItem]:
     node_map = build_node_map(recipe)
     edges = sort_edges(recipe)
+    branch_labels, branch_origins, recipe_branches = build_branch_metadata(recipe)
 
     # 先按 out_node 分组
     by_out = {}
@@ -521,6 +685,9 @@ def build_seq_items(recipe: Dict[str, Any], recipe_id: str) -> List[SeqItem]:
                 key1=tr1(e, node_map),
                 key2=tr2(e, node_map),
                 state_out=state_key(node_map[out_node]),
+                branch_label=branch_labels[out_node],
+                branch_origins=branch_origins[out_node],
+                recipe_branches=recipe_branches,
             )
         )
 
@@ -563,7 +730,38 @@ def state_match_loose(a_state, b_state):
     return name_same and (physical_same or chemical_same)
 
 
+def branch_contexts_compatible(label1, origins1, branches1, label2, origins2, branches2):
+    """Shared food/qualified-container identities constrain join stages."""
+    if label1 is None or label2 is None:
+        return False
+    common = branches1 & branches2
+    if common:
+        left, right = origins1 & common, origins2 & common
+        return bool(left) and left == right
+    if branches1 or branches2:
+        return False
+    return label1 == label2
+
+
 def match_by_rule(a, b, rule_name):
+    if not branch_contexts_compatible(
+            a.branch_label, a.branch_origins, a.recipe_branches,
+            b.branch_label, b.branch_origins, b.recipe_branches):
+        # A unique product can identify the corresponding stage when neither
+        # branch has a shared root anchor (e.g. starch -> sauce vs aux -> sauce).
+        # Never override an existing shared-anchor mismatch: that protects
+        # pre-join vs post-join stages and independent food branches.
+        common = a.recipe_branches & b.recipe_branches
+        product_corresponds = (
+            a.branch_label is not None and b.branch_label is not None
+            and a.product_branch is not None
+            and a.product_branch == b.product_branch
+            and not (a.branch_origins & common)
+            and not (b.branch_origins & common)
+        )
+        if not product_corresponds:
+            return False
+
     if rule_name == "exact":
         return a.key1 == b.key1
 
@@ -905,65 +1103,72 @@ def hierarchical_three_pass_match(
 
     return all_records
 
+def _acyclic_alignment(recipe1, recipe2, pairs, valid1, valid2):
+    """Reject alignments creating causal cycles; numeric index is not time."""
+    aliases = {}
+    for i, (a, b) in enumerate(pairs):
+        aliases[(0, a.out_node)] = ("pair", i)
+        aliases[(1, b.out_node)] = ("pair", i)
+    adjacency = defaultdict(set)
+    indegree = {}
+    for side, recipe, valid in ((0, recipe1, valid1), (1, recipe2, valid2)):
+        for nid in valid:
+            indegree.setdefault(aliases.get((side, nid), (side, nid)), 0)
+        for edge in recipe["edges"]:
+            u, v = int(edge["node1"]), int(edge["node2"])
+            if u not in valid or v not in valid:
+                continue
+            u = aliases.get((side, u), (side, u))
+            v = aliases.get((side, v), (side, v))
+            if u == v:
+                return False
+            if v not in adjacency[u]:
+                adjacency[u].add(v)
+                indegree[v] += 1
+    queue = deque(n for n, count in indegree.items() if count == 0)
+    visited = 0
+    while queue:
+        cur = queue.popleft()
+        visited += 1
+        for nxt in adjacency[cur]:
+            indegree[nxt] -= 1
+            if indegree[nxt] == 0:
+                queue.append(nxt)
+    return visited == len(indegree)
+
+
 def hierarchical_main_match_two_stage(recipe1, recipe2):
-    recipe1_id = recipe1.get("recipe_id", "recipe1")
-    recipe2_id = recipe2.get("recipe_id", "recipe2")
-
-    seq1 = build_main_seq_items(recipe1, recipe1_id)
-    seq2 = build_main_seq_items(recipe2, recipe2_id)
-
-    windows = [(seq1, seq2)]
-    all_records = []
-
-    # stage 1
-    rec1, windows = hierarchical_match_windows(windows, "exact")
-    all_records.extend(rec1)
-
-    rec2, windows = hierarchical_match_windows(windows, "similar2")
-    all_records.extend(rec2)
-
-    rec3, windows = hierarchical_match_windows(windows, "similar3")
-    all_records.extend(rec3)
-
-    # stage 2
-    rec4, windows = hierarchical_match_windows(windows, "similar2_loose")
-    for r in rec4:
-        r.kind = "similar2_loose"
-    all_records.extend(rec4)
-
-    rec5, windows = hierarchical_match_windows(windows, "similar3_loose")
-    for r in rec5:
-        r.kind = "similar3_loose"
-    all_records.extend(rec5)
-
-    # leftovers
-    for seq1_rem, seq2_rem in windows:
-        for a in seq1_rem:
-            all_records.append(
-                MatchRecord(
-                    kind="only_r1",
-                    r1_edge=int(a.edge["index"]),
-                    r2_edge=None,
-                    r1_out_node=a.out_node,
-                    r2_out_node=None,
-                    orig_pos_r1=a.orig_pos,
-                    orig_pos_r2=None,
-                )
-            )
-        for b in seq2_rem:
-            all_records.append(
-                MatchRecord(
-                    kind="only_r2",
-                    r1_edge=None,
-                    r2_edge=int(b.edge["index"]),
-                    r1_out_node=None,
-                    r2_out_node=b.out_node,
-                    orig_pos_r1=None,
-                    orig_pos_r2=b.orig_pos,
-                )
-            )
-
-    return all_records
+    seq1 = build_main_seq_items(recipe1, recipe1.get("recipe_id", "recipe1"))
+    seq2 = build_main_seq_items(recipe2, recipe2.get("recipe_id", "recipe2"))
+    valid1 = {n for n, label in build_branch_labels(recipe1).items() if label is not None}
+    valid2 = {n for n, label in build_branch_labels(recipe2).items() if label is not None}
+    used1, used2, pairs, records = set(), set(), [], []
+    # Keep the original exact/similar priority, but constrain by graph
+    # dependencies rather than one global node-index sequence.
+    for rule in ("exact", "similar2", "similar3", "similar2_loose", "similar3_loose"):
+        for a in seq1:
+            if a.out_node in used1:
+                continue
+            for b in seq2:
+                if b.out_node in used2 or not match_by_rule(a, b, rule):
+                    continue
+                if not _acyclic_alignment(recipe1, recipe2, pairs + [(a, b)], valid1, valid2):
+                    continue
+                used1.add(a.out_node)
+                used2.add(b.out_node)
+                pairs.append((a, b))
+                records.append(MatchRecord(rule, int(a.edge["index"]), int(b.edge["index"]),
+                                           a.out_node, b.out_node, a.orig_pos, b.orig_pos))
+                break
+    for a in seq1:
+        if a.out_node not in used1:
+            records.append(MatchRecord("only_r1", int(a.edge["index"]), None,
+                                       a.out_node, None, a.orig_pos, None))
+    for b in seq2:
+        if b.out_node not in used2:
+            records.append(MatchRecord("only_r2", None, int(b.edge["index"]),
+                                       None, b.out_node, None, b.orig_pos))
+    return records
 
 
 def record_sort_key(m: MatchRecord):
@@ -979,3 +1184,4 @@ def sort_match_records_for_visualization(records: List[MatchRecord]) -> List[Mat
 def compare_recipes(recipe1, recipe2):
     records = hierarchical_main_match_two_stage(recipe1, recipe2)
     return sort_match_records_for_visualization(records)
+

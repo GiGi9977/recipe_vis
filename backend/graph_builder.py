@@ -3,9 +3,12 @@ from dataclasses import dataclass
 from typing import Dict, Any, List, Tuple, Optional
 from collections import defaultdict
 from pathlib import Path
+import re
 
 from .matcher import (
     build_node_map,
+    build_branch_metadata,
+    branch_contexts_compatible,
     state_key,
     compare_non_main_nodes,
     is_main_like
@@ -134,9 +137,15 @@ def build_merged_nodes_from_records(
     c = 0
 
     if include_start_node:
-        start_nodes1 = find_main_start_nodes(recipe1)
-        start_nodes2 = find_main_start_nodes(recipe2)
+        # Aux-created products can look like starts to the main-only scan,
+        # but already have a sequence record. Never assign them a second pair.
+        recorded1 = {r.r1_out_node for r in records if r.r1_out_node is not None}
+        recorded2 = {r.r2_out_node for r in records if r.r2_out_node is not None}
+        start_nodes1 = [n for n in find_main_start_nodes(recipe1) if n not in recorded1]
+        start_nodes2 = [n for n in find_main_start_nodes(recipe2) if n not in recorded2]
 
+        labels1, origins1, branches1 = build_branch_metadata(recipe1)
+        labels2, origins2, branches2 = build_branch_metadata(recipe2)
         used_start2 = set()
 
         for s1 in start_nodes1:
@@ -147,7 +156,10 @@ def build_merged_nodes_from_records(
                 if s2 in used_start2:
                     continue
                 n2 = nmap2[s2]
-                if state_key(n1) == state_key(n2):
+                if (branch_contexts_compatible(
+                        labels1.get(s1), origins1[s1], branches1,
+                        labels2.get(s2), origins2[s2], branches2)
+                        and state_key(n1) == state_key(n2)):
                     best_s2 = s2
                     break
 
@@ -1429,7 +1441,7 @@ def build_icon_name(name, physical_state, chemical_state):
         return None
 
     parts = [
-        str(name).lower().strip(),
+        re.sub(r"[\s_]+", "_", str(name).lower().strip()).strip("_"),
         str(physical_state or "").lower().strip(),
         str(chemical_state or "").lower().strip(),
     ]

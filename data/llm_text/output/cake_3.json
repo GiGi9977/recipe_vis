@@ -1,0 +1,886 @@
+{
+  "recipe_id": "cake_3",
+  "atomic_steps": [
+    {
+      "step": 1,
+      "entity": "ingredients",
+      "action": "prepare",
+      "role": "aux",
+      "receiving_entity": null
+    },
+    {
+      "step": 2,
+      "entity": "vegetable_oil",
+      "action": "heat",
+      "role": "aux",
+      "receiving_entity": "wok_pot"
+    },
+    {
+      "step": 3,
+      "entity": "vegetable_oil",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "wok_pot"
+    },
+    {
+      "step": 4,
+      "entity": "cake_flour",
+      "action": "add",
+      "role": "main",
+      "receiving_entity": "wok_pot"
+    },
+    {
+      "step": 5,
+      "entity": "wok_pot",
+      "action": "stir",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 6,
+      "entity": "milk",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "flour_batter"
+    },
+    {
+      "step": 7,
+      "entity": "flour_batter",
+      "action": "stir",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 8,
+      "entity": "egg",
+      "action": "split",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 9,
+      "entity": "egg_yolk",
+      "action": "add",
+      "role": "main",
+      "receiving_entity": "batter"
+    },
+    {
+      "step": 10,
+      "entity": "batter",
+      "action": "stir",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 11,
+      "entity": "salt",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "egg_white"
+    },
+    {
+      "step": 12,
+      "entity": "lemon_juice",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "egg_white"
+    },
+    {
+      "step": 13,
+      "entity": "egg_white",
+      "action": "whisk",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 14,
+      "entity": "sugar",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "egg_white_foam"
+    },
+    {
+      "step": 15,
+      "entity": "egg_white_foam",
+      "action": "whisk",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 16,
+      "entity": "sugar",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "egg_white_foam"
+    },
+    {
+      "step": 17,
+      "entity": "egg_white_foam",
+      "action": "whisk",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 18,
+      "entity": "sugar",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "egg_white_foam"
+    },
+    {
+      "step": 19,
+      "entity": "egg_white_foam",
+      "action": "whisk",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 20,
+      "entity": "egg_white_foam",
+      "action": "add",
+      "role": "main",
+      "receiving_entity": "yolk_batter"
+    },
+    {
+      "step": 21,
+      "entity": "yolk_batter",
+      "action": "stir",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 22,
+      "entity": "egg_white_foam",
+      "action": "add",
+      "role": "main",
+      "receiving_entity": "cake_batter"
+    },
+    {
+      "step": 23,
+      "entity": "cake_batter",
+      "action": "stir",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 24,
+      "entity": "paper_liner",
+      "action": "cut",
+      "role": "aux",
+      "receiving_entity": null
+    },
+    {
+      "step": 25,
+      "entity": "board",
+      "action": "cut",
+      "role": "aux",
+      "receiving_entity": null
+    },
+    {
+      "step": 26,
+      "entity": "paper_liner",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "mold"
+    },
+    {
+      "step": 27,
+      "entity": "board",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "mold"
+    },
+    {
+      "step": 28,
+      "entity": "cake_batter",
+      "action": "add",
+      "role": "main",
+      "receiving_entity": "mold"
+    },
+    {
+      "step": 29,
+      "entity": "mold",
+      "action": "scrape",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 30,
+      "entity": "mold",
+      "action": "heat",
+      "role": "aux",
+      "receiving_entity": null
+    },
+    {
+      "step": 31,
+      "entity": "cake_in_mold",
+      "action": "bake",
+      "role": "main",
+      "receiving_entity": "mold"
+    }
+  ],
+  "nodes": [
+    {
+      "index": 1,
+      "container": "none",
+      "name": "ingredients",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 2,
+      "container": "none",
+      "name": "vegetable_oil",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 3,
+      "container": "wok_pot",
+      "name": "wok_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 4,
+      "container": "wok_pot",
+      "name": "wok_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 2,
+          "action": "heat",
+          "type": "heat",
+          "source_ingredient": "wok_pot"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "container": "none",
+      "name": "cake_flour",
+      "type": "main",
+      "physical_state": "powder",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 6,
+      "container": "wok_pot",
+      "name": "flour_batter",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 5,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "wok_pot"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "container": "none",
+      "name": "milk",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 8,
+      "container": "none",
+      "name": "batter",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 7,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "flour_batter"
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "container": "none",
+      "name": "egg",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": []
+    },
+    {
+      "index": 10,
+      "container": "none",
+      "name": "egg_yolk",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 8,
+          "action": "split",
+          "type": "prep",
+          "source_ingredient": "egg"
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "container": "none",
+      "name": "egg_white",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 9,
+          "action": "split",
+          "type": "prep",
+          "source_ingredient": "egg"
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "container": "none",
+      "name": "yolk_batter",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 11,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "batter"
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "container": "none",
+      "name": "salt",
+      "type": "aux",
+      "physical_state": "powder",
+      "chemical_state": "raw",
+      "flavor": "salty",
+      "previous": []
+    },
+    {
+      "index": 14,
+      "container": "none",
+      "name": "lemon_juice",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "sour",
+      "previous": []
+    },
+    {
+      "index": 15,
+      "container": "none",
+      "name": "egg_white_foam",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 14,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "egg_white"
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "container": "none",
+      "name": "sugar",
+      "type": "aux",
+      "physical_state": "powder",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": []
+    },
+    {
+      "index": 17,
+      "container": "none",
+      "name": "egg_white_foam",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 16,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "egg_white_foam"
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "container": "none",
+      "name": "sugar",
+      "type": "aux",
+      "physical_state": "powder",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": []
+    },
+    {
+      "index": 19,
+      "container": "none",
+      "name": "egg_white_foam",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 18,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "egg_white_foam"
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "container": "none",
+      "name": "sugar",
+      "type": "aux",
+      "physical_state": "powder",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": []
+    },
+    {
+      "index": 21,
+      "container": "none",
+      "name": "egg_white_foam",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 20,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "egg_white_foam"
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "container": "none",
+      "name": "cake_batter",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 22,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "yolk_batter"
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "container": "none",
+      "name": "cake_batter",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 24,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "cake_batter"
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "container": "none",
+      "name": "paper_liner",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 25,
+      "container": "none",
+      "name": "paper_liner",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 25,
+          "action": "cut",
+          "type": "prep",
+          "source_ingredient": "paper_liner"
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "container": "none",
+      "name": "board",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 27,
+      "container": "none",
+      "name": "board",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 26,
+          "action": "cut",
+          "type": "prep",
+          "source_ingredient": "board"
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "container": "mold",
+      "name": "mold",
+      "type": "container",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 29,
+      "container": "mold",
+      "name": "cake_in_mold",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 30,
+          "action": "scrape",
+          "type": "prep",
+          "source_ingredient": "mold"
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "container": "deep_pot",
+      "name": "deep_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 31,
+      "container": "deep_pot",
+      "name": "deep_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 31,
+          "action": "heat",
+          "type": "heat",
+          "source_ingredient": "deep_pot"
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "container": "mold",
+      "name": "cake",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "cooked",
+      "flavor": "sweet",
+      "previous": [
+        {
+          "edge_index": 33,
+          "action": "bake",
+          "type": "heat",
+          "source_ingredient": "mold"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "index": 1,
+      "action": "prepare",
+      "type": "prep",
+      "node1": 1,
+      "node2": 1
+    },
+    {
+      "index": 2,
+      "action": "heat",
+      "type": "heat",
+      "node1": 3,
+      "node2": 4
+    },
+    {
+      "index": 3,
+      "action": "add",
+      "type": "prep",
+      "node1": 2,
+      "node2": 3
+    },
+    {
+      "index": 4,
+      "action": "add",
+      "type": "prep",
+      "node1": 5,
+      "node2": 4
+    },
+    {
+      "index": 5,
+      "action": "stir",
+      "type": "prep",
+      "node1": 4,
+      "node2": 6
+    },
+    {
+      "index": 6,
+      "action": "add",
+      "type": "prep",
+      "node1": 7,
+      "node2": 6
+    },
+    {
+      "index": 7,
+      "action": "stir",
+      "type": "prep",
+      "node1": 6,
+      "node2": 8
+    },
+    {
+      "index": 8,
+      "action": "split",
+      "type": "prep",
+      "node1": 9,
+      "node2": 10
+    },
+    {
+      "index": 9,
+      "action": "split",
+      "type": "prep",
+      "node1": 9,
+      "node2": 11
+    },
+    {
+      "index": 10,
+      "action": "add",
+      "type": "prep",
+      "node1": 10,
+      "node2": 8
+    },
+    {
+      "index": 11,
+      "action": "stir",
+      "type": "prep",
+      "node1": 8,
+      "node2": 12
+    },
+    {
+      "index": 12,
+      "action": "add",
+      "type": "prep",
+      "node1": 13,
+      "node2": 11
+    },
+    {
+      "index": 13,
+      "action": "add",
+      "type": "prep",
+      "node1": 14,
+      "node2": 11
+    },
+    {
+      "index": 14,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 11,
+      "node2": 15
+    },
+    {
+      "index": 15,
+      "action": "add",
+      "type": "prep",
+      "node1": 16,
+      "node2": 15
+    },
+    {
+      "index": 16,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 15,
+      "node2": 17
+    },
+    {
+      "index": 17,
+      "action": "add",
+      "type": "prep",
+      "node1": 18,
+      "node2": 17
+    },
+    {
+      "index": 18,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 17,
+      "node2": 19
+    },
+    {
+      "index": 19,
+      "action": "add",
+      "type": "prep",
+      "node1": 20,
+      "node2": 19
+    },
+    {
+      "index": 20,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 19,
+      "node2": 21
+    },
+    {
+      "index": 21,
+      "action": "add",
+      "type": "prep",
+      "node1": 21,
+      "node2": 12
+    },
+    {
+      "index": 22,
+      "action": "stir",
+      "type": "prep",
+      "node1": 12,
+      "node2": 22
+    },
+    {
+      "index": 23,
+      "action": "add",
+      "type": "prep",
+      "node1": 21,
+      "node2": 22
+    },
+    {
+      "index": 24,
+      "action": "stir",
+      "type": "prep",
+      "node1": 22,
+      "node2": 23
+    },
+    {
+      "index": 25,
+      "action": "cut",
+      "type": "prep",
+      "node1": 24,
+      "node2": 25
+    },
+    {
+      "index": 26,
+      "action": "cut",
+      "type": "prep",
+      "node1": 26,
+      "node2": 27
+    },
+    {
+      "index": 27,
+      "action": "add",
+      "type": "prep",
+      "node1": 25,
+      "node2": 28
+    },
+    {
+      "index": 28,
+      "action": "add",
+      "type": "prep",
+      "node1": 27,
+      "node2": 28
+    },
+    {
+      "index": 29,
+      "action": "add",
+      "type": "prep",
+      "node1": 23,
+      "node2": 28
+    },
+    {
+      "index": 30,
+      "action": "scrape",
+      "type": "prep",
+      "node1": 28,
+      "node2": 29
+    },
+    {
+      "index": 31,
+      "action": "heat",
+      "type": "heat",
+      "node1": 30,
+      "node2": 31
+    },
+    {
+      "index": 32,
+      "action": "add",
+      "type": "prep",
+      "node1": 29,
+      "node2": 31
+    },
+    {
+      "index": 33,
+      "action": "bake",
+      "type": "heat",
+      "node1": 31,
+      "node2": 32
+    }
+  ]
+}

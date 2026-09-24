@@ -1,0 +1,1319 @@
+{
+  "specs": [
+    {
+      "icon_name": "bay_leaf_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "fruit_green",
+        "neutral_beige"
+      ],
+      "short_desc": "bay_leaf_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "beef_stock_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "beef_stock_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "black_pepper_powder_raw",
+      "family": "paste",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [
+        "specks"
+      ],
+      "colors": [
+        "neutral_beige",
+        "paste_cream"
+      ],
+      "short_desc": "black_pepper_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "broccoli_solid_cooked",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "berry_dots"
+      ],
+      "colors": [
+        "fruit_green",
+        "neutral_beige"
+      ],
+      "short_desc": "broccoli_solid_cooked; physical silhouette: solid."
+    },
+    {
+      "icon_name": "broccoli_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "fruit_green",
+        "fruit_yellow"
+      ],
+      "short_desc": "broccoli_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "broccoli_with_shrimp_solid_cooked",
+      "family": "meat",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "steam"
+      ],
+      "colors": [
+        "meat_white",
+        "neutral_beige"
+      ],
+      "short_desc": "broccoli_with_shrimp_solid_cooked; physical silhouette: solid."
+    },
+    {
+      "icon_name": "butter_solid_raw",
+      "family": "paste",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "swirl"
+      ],
+      "colors": [
+        "paste_cream",
+        "paste_yellow",
+        "neutral_beige"
+      ],
+      "short_desc": "butter_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "cake_paste_paste_raw",
+      "family": "cake",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "holes"
+      ],
+      "colors": [
+        "cake_gold",
+        "paste_cream",
+        "sugar_white"
+      ],
+      "short_desc": "cake_paste_paste_raw; physical silhouette: paste."
+    },
+    {
+      "icon_name": "cake_paste_raw",
+      "family": "cake",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "holes"
+      ],
+      "colors": [
+        "cake_gold",
+        "paste_cream"
+      ],
+      "short_desc": "cake_paste_raw; physical silhouette: paste."
+    },
+    {
+      "icon_name": "cake_solid_cooked",
+      "family": "cake",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "holes"
+      ],
+      "colors": [
+        "cake_gold",
+        "neutral_beige",
+        "sugar_white"
+      ],
+      "short_desc": "cake_solid_cooked; physical silhouette: solid."
+    },
+    {
+      "icon_name": "canned_tomato_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "fruit_red",
+        "sauce_brown"
+      ],
+      "short_desc": "canned_tomato_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "chicken_essence_powder_raw",
+      "family": "meat",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [],
+      "colors": [
+        "meat_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "chicken_essence_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "chili_slice_raw",
+      "family": "fruit",
+      "template": "slice",
+      "variant": "slice",
+      "marks": [
+        "seeds"
+      ],
+      "colors": [
+        "fruit_red",
+        "neutral_beige"
+      ],
+      "short_desc": "chili_slice_raw; physical silhouette: slice."
+    },
+    {
+      "icon_name": "chili_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "seeds"
+      ],
+      "colors": [
+        "fruit_red",
+        "neutral_beige"
+      ],
+      "short_desc": "chili_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "cinnamon_powder_raw",
+      "family": "flour",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [
+        "secondary_patch"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "cinnamon_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "cinnamon_solid_raw",
+      "family": "paste",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "dot"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "cinnamon_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "cooking_wine_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "cooking_wine_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "corn_oil_liquid_raw",
+      "family": "oil",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "oil_gold",
+        "paste_cream"
+      ],
+      "short_desc": "corn_oil_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "corn_starch_powder_raw",
+      "family": "flour",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [
+        "secondary_patch"
+      ],
+      "colors": [
+        "flour_white",
+        "neutral_beige"
+      ],
+      "short_desc": "corn_starch_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "dark_soy_sauce_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "dark_soy_sauce_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "egg_liquid_raw",
+      "family": "egg",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "egg_white",
+        "yolk_yellow",
+        "neutral_beige"
+      ],
+      "short_desc": "egg_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "egg_solid_raw",
+      "family": "egg",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "egg_white",
+        "yolk_yellow"
+      ],
+      "short_desc": "egg_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "egg_white_liquid_raw",
+      "family": "egg",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "egg_white",
+        "neutral_beige"
+      ],
+      "short_desc": "egg_white_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "egg_white_paste_paste_raw",
+      "family": "egg",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "egg_white",
+        "paste_cream"
+      ],
+      "short_desc": "egg_white_paste_paste_raw; physical silhouette: paste."
+    },
+    {
+      "icon_name": "egg_white_sauce_paste_cooked",
+      "family": "egg",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "egg_white",
+        "sauce_brown"
+      ],
+      "short_desc": "egg_white_sauce_paste_cooked; physical silhouette: paste."
+    },
+    {
+      "icon_name": "eggplant_slice_cooked",
+      "family": "fruit",
+      "template": "slice",
+      "variant": "slice",
+      "marks": [
+        "seeds"
+      ],
+      "colors": [
+        "fruit_blue",
+        "neutral_beige"
+      ],
+      "short_desc": "eggplant_slice_cooked; physical silhouette: slice."
+    },
+    {
+      "icon_name": "eggplant_slice_raw",
+      "family": "fruit",
+      "template": "slice",
+      "variant": "slice",
+      "marks": [
+        "seeds"
+      ],
+      "colors": [
+        "fruit_blue",
+        "fruit_green"
+      ],
+      "short_desc": "eggplant_slice_raw; physical silhouette: slice."
+    },
+    {
+      "icon_name": "eggplant_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "seeds"
+      ],
+      "colors": [
+        "fruit_blue",
+        "neutral_beige"
+      ],
+      "short_desc": "eggplant_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "flour_powder_raw",
+      "family": "flour",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [
+        "secondary_patch"
+      ],
+      "colors": [
+        "flour_white",
+        "neutral_beige"
+      ],
+      "short_desc": "flour_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "garlic_dice_raw",
+      "family": "fruit",
+      "template": "dice",
+      "variant": "dice",
+      "marks": [
+        "berry_dots"
+      ],
+      "colors": [
+        "neutral_beige",
+        "paste_cream"
+      ],
+      "short_desc": "garlic_dice_raw; physical silhouette: dice."
+    },
+    {
+      "icon_name": "garlic_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "neutral_beige",
+        "paste_cream"
+      ],
+      "short_desc": "garlic_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "ginger_dice_raw",
+      "family": "fruit",
+      "template": "dice",
+      "variant": "dice",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "paste_yellow",
+        "neutral_beige"
+      ],
+      "short_desc": "ginger_dice_raw; physical silhouette: dice."
+    },
+    {
+      "icon_name": "ginger_slice_raw",
+      "family": "fruit",
+      "template": "slice",
+      "variant": "slice",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "paste_yellow",
+        "neutral_beige"
+      ],
+      "short_desc": "ginger_slice_raw; physical silhouette: slice."
+    },
+    {
+      "icon_name": "ginger_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "paste_yellow",
+        "neutral_beige"
+      ],
+      "short_desc": "ginger_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "goat_cheese_dice_raw",
+      "family": "paste",
+      "template": "dice",
+      "variant": "dice",
+      "marks": [
+        "specks"
+      ],
+      "colors": [
+        "paste_cream",
+        "neutral_beige"
+      ],
+      "short_desc": "goat_cheese_dice_raw; physical silhouette: dice."
+    },
+    {
+      "icon_name": "goat_cheese_solid_raw",
+      "family": "paste",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "dot"
+      ],
+      "colors": [
+        "paste_cream",
+        "neutral_beige"
+      ],
+      "short_desc": "goat_cheese_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "ground_meat_paste_raw",
+      "family": "meat",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "fat_patch"
+      ],
+      "colors": [
+        "meat_red",
+        "fat_white",
+        "neutral_beige"
+      ],
+      "short_desc": "ground_meat_paste_raw; physical silhouette: paste."
+    },
+    {
+      "icon_name": "honey_liquid_raw",
+      "family": "sugar",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [],
+      "colors": [
+        "paste_yellow",
+        "oil_gold"
+      ],
+      "short_desc": "honey_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "ketchup_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "fruit_red",
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "ketchup_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "lamb_chunk_raw",
+      "family": "meat",
+      "template": "chunk",
+      "variant": "chunk",
+      "marks": [],
+      "colors": [
+        "meat_red",
+        "fat_white"
+      ],
+      "short_desc": "lamb_chunk_raw; physical silhouette: chunk."
+    },
+    {
+      "icon_name": "lemon_juice_liquid_raw",
+      "family": "fruit",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "citrus_segments",
+        "leaf"
+      ],
+      "colors": [
+        "fruit_yellow",
+        "neutral_beige"
+      ],
+      "short_desc": "lemon_juice_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "light_soy_sauce_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "light_soy_sauce_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "meat_sauce_chunk_cooked",
+      "family": "meat",
+      "template": "chunk",
+      "variant": "chunk",
+      "marks": [
+        "fat_patch",
+        "steam"
+      ],
+      "colors": [
+        "meat_brown",
+        "fat_white"
+      ],
+      "short_desc": "meat_sauce_chunk_cooked; physical silhouette: chunk."
+    },
+    {
+      "icon_name": "meat_sauce_liquid_cooked",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "sauce_brown",
+        "meat_brown"
+      ],
+      "short_desc": "meat_sauce_liquid_cooked; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "meat_sauce_paste_cooked",
+      "family": "paste",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "specks"
+      ],
+      "colors": [
+        "paste_cream",
+        "sauce_brown"
+      ],
+      "short_desc": "meat_sauce_paste_cooked; physical silhouette: paste."
+    },
+    {
+      "icon_name": "milk_liquid_raw",
+      "family": "egg",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "egg_white",
+        "neutral_beige"
+      ],
+      "short_desc": "milk_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "mint_shred_raw",
+      "family": "fruit",
+      "template": "shred",
+      "variant": "shred",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "fruit_green",
+        "neutral_beige"
+      ],
+      "short_desc": "mint_shred_raw; physical silhouette: shred."
+    },
+    {
+      "icon_name": "mint_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "fruit_green",
+        "neutral_beige"
+      ],
+      "short_desc": "mint_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "moussaka_solid_cooked",
+      "family": "cake",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [],
+      "colors": [
+        "cake_gold",
+        "meat_brown"
+      ],
+      "short_desc": "moussaka_solid_cooked; physical silhouette: solid."
+    },
+    {
+      "icon_name": "msg_powder_raw",
+      "family": "sugar",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [],
+      "colors": [
+        "sugar_white",
+        "neutral_beige"
+      ],
+      "short_desc": "msg_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "nutmeg_powder_raw",
+      "family": "flour",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [
+        "secondary_patch"
+      ],
+      "colors": [
+        "flour_white",
+        "neutral_beige"
+      ],
+      "short_desc": "nutmeg_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "oil_braised_shrimp_solid_cooked",
+      "family": "meat",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "fat_patch"
+      ],
+      "colors": [
+        "meat_white",
+        "oil_gold"
+      ],
+      "short_desc": "oil_braised_shrimp_solid_cooked; physical silhouette: solid."
+    },
+    {
+      "icon_name": "oil_liquid_raw",
+      "family": "oil",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "oil_gold",
+        "neutral_beige"
+      ],
+      "short_desc": "oil_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "onion_dice_raw",
+      "family": "fruit",
+      "template": "dice",
+      "variant": "dice",
+      "marks": [],
+      "colors": [
+        "neutral_beige",
+        "paste_cream"
+      ],
+      "short_desc": "onion_dice_raw; physical silhouette: dice."
+    },
+    {
+      "icon_name": "onion_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [],
+      "colors": [
+        "neutral_beige",
+        "paste_cream"
+      ],
+      "short_desc": "onion_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "oyster_sauce_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "oyster_sauce_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "paprika_powder_raw",
+      "family": "flour",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [
+        "secondary_patch"
+      ],
+      "colors": [
+        "fruit_red",
+        "neutral_beige"
+      ],
+      "short_desc": "paprika_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "parmesan_shred_raw",
+      "family": "meat",
+      "template": "shred",
+      "variant": "shred",
+      "marks": [
+        "fat_patch"
+      ],
+      "colors": [
+        "paste_cream",
+        "fat_white"
+      ],
+      "short_desc": "parmesan_shred_raw; physical silhouette: shred."
+    },
+    {
+      "icon_name": "paste_paste_cooked",
+      "family": "paste",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "swirl"
+      ],
+      "colors": [
+        "paste_cream",
+        "paste_yellow"
+      ],
+      "short_desc": "paste_paste_cooked; physical silhouette: paste."
+    },
+    {
+      "icon_name": "paste_paste_raw",
+      "family": "paste",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "dot"
+      ],
+      "colors": [
+        "paste_cream",
+        "paste_yellow"
+      ],
+      "short_desc": "paste_paste_raw; physical silhouette: paste."
+    },
+    {
+      "icon_name": "peeled_shrimp_solid_cooked",
+      "family": "meat",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "steam"
+      ],
+      "colors": [
+        "meat_white",
+        "meat_brown"
+      ],
+      "short_desc": "peeled_shrimp_solid_cooked; physical silhouette: solid."
+    },
+    {
+      "icon_name": "pork_chunk_cooked",
+      "family": "meat",
+      "template": "chunk",
+      "variant": "chunk",
+      "marks": [
+        "fat_patch"
+      ],
+      "colors": [
+        "meat_brown",
+        "fat_white"
+      ],
+      "short_desc": "pork_chunk_cooked; physical silhouette: chunk."
+    },
+    {
+      "icon_name": "pork_chunk_raw",
+      "family": "meat",
+      "template": "chunk",
+      "variant": "chunk",
+      "marks": [
+        "fat_patch"
+      ],
+      "colors": [
+        "meat_red",
+        "fat_white"
+      ],
+      "short_desc": "pork_chunk_raw; physical silhouette: chunk."
+    },
+    {
+      "icon_name": "pork_solid_cooked",
+      "family": "meat",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "steam"
+      ],
+      "colors": [
+        "meat_brown",
+        "fat_white"
+      ],
+      "short_desc": "pork_solid_cooked; physical silhouette: solid."
+    },
+    {
+      "icon_name": "pork_solid_raw",
+      "family": "meat",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "fat_patch"
+      ],
+      "colors": [
+        "meat_red",
+        "fat_white"
+      ],
+      "short_desc": "pork_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "potato_chunk_raw",
+      "family": "fruit",
+      "template": "chunk",
+      "variant": "chunk",
+      "marks": [],
+      "colors": [
+        "neutral_beige",
+        "paste_cream"
+      ],
+      "short_desc": "potato_chunk_raw; physical silhouette: chunk."
+    },
+    {
+      "icon_name": "potato_slice_cooked",
+      "family": "fruit",
+      "template": "slice",
+      "variant": "slice",
+      "marks": [],
+      "colors": [
+        "cake_gold",
+        "neutral_beige"
+      ],
+      "short_desc": "potato_slice_cooked; physical silhouette: slice."
+    },
+    {
+      "icon_name": "potato_slice_raw",
+      "family": "fruit",
+      "template": "slice",
+      "variant": "slice",
+      "marks": [],
+      "colors": [
+        "neutral_beige",
+        "paste_cream"
+      ],
+      "short_desc": "potato_slice_raw; physical silhouette: slice."
+    },
+    {
+      "icon_name": "potato_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [],
+      "colors": [
+        "neutral_beige",
+        "paste_cream"
+      ],
+      "short_desc": "potato_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "red_braised_pork_chunk_cooked",
+      "family": "meat",
+      "template": "chunk",
+      "variant": "chunk",
+      "marks": [
+        "fat_patch",
+        "steam"
+      ],
+      "colors": [
+        "meat_brown",
+        "fat_white"
+      ],
+      "short_desc": "red_braised_pork_chunk_cooked; physical silhouette: chunk."
+    },
+    {
+      "icon_name": "red_wine_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "meat_red",
+        "sauce_brown"
+      ],
+      "short_desc": "red_wine_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "salt_powder_raw",
+      "family": "sugar",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [],
+      "colors": [
+        "sugar_white",
+        "neutral_beige"
+      ],
+      "short_desc": "salt_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "sauce_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "sauce_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "scallion_dice_raw",
+      "family": "fruit",
+      "template": "dice",
+      "variant": "dice",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "fruit_green",
+        "neutral_beige"
+      ],
+      "short_desc": "scallion_dice_raw; physical silhouette: dice."
+    },
+    {
+      "icon_name": "scallion_slice_raw",
+      "family": "fruit",
+      "template": "slice",
+      "variant": "slice",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "fruit_green",
+        "neutral_beige"
+      ],
+      "short_desc": "scallion_slice_raw; physical silhouette: slice."
+    },
+    {
+      "icon_name": "scallion_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "leaf"
+      ],
+      "colors": [
+        "fruit_green",
+        "neutral_beige"
+      ],
+      "short_desc": "scallion_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "sesame_oil_liquid_raw",
+      "family": "oil",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "oil_gold",
+        "neutral_beige"
+      ],
+      "short_desc": "sesame_oil_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "shrimp_solid_cooked",
+      "family": "meat",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "steam"
+      ],
+      "colors": [
+        "meat_white",
+        "meat_brown"
+      ],
+      "short_desc": "shrimp_solid_cooked; physical silhouette: solid."
+    },
+    {
+      "icon_name": "shrimp_solid_raw",
+      "family": "meat",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [],
+      "colors": [
+        "meat_white",
+        "neutral_beige"
+      ],
+      "short_desc": "shrimp_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "soy_sauce_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "soy_sauce_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "spice_powder_powder_raw",
+      "family": "flour",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [
+        "none"
+      ],
+      "colors": [
+        "flour_white",
+        "neutral_beige"
+      ],
+      "short_desc": "spice_powder_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "star_anise_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "seeds"
+      ],
+      "colors": [
+        "fruit_red",
+        "neutral_beige"
+      ],
+      "short_desc": "star_anise_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "starch_powder_raw",
+      "family": "flour",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [
+        "secondary_patch"
+      ],
+      "colors": [
+        "flour_white",
+        "neutral_beige"
+      ],
+      "short_desc": "starch_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "stock_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "sauce_brown",
+        "neutral_beige"
+      ],
+      "short_desc": "stock_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "sugar_powder_raw",
+      "family": "sugar",
+      "template": "powder",
+      "variant": "powder",
+      "marks": [
+        "none"
+      ],
+      "colors": [
+        "sugar_white",
+        "neutral_beige"
+      ],
+      "short_desc": "sugar_powder_raw; physical silhouette: powder."
+    },
+    {
+      "icon_name": "sugar_solid_raw",
+      "family": "sugar",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "none"
+      ],
+      "colors": [
+        "sugar_white",
+        "cake_gold"
+      ],
+      "short_desc": "sugar_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "tomato_chunk_raw",
+      "family": "fruit",
+      "template": "chunk",
+      "variant": "chunk",
+      "marks": [
+        "seeds",
+        "leaf"
+      ],
+      "colors": [
+        "fruit_red",
+        "fruit_green"
+      ],
+      "short_desc": "tomato_chunk_raw; physical silhouette: chunk."
+    },
+    {
+      "icon_name": "tomato_paste_paste_raw",
+      "family": "paste",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "swirl"
+      ],
+      "colors": [
+        "fruit_red",
+        "paste_cream"
+      ],
+      "short_desc": "tomato_paste_paste_raw; physical silhouette: paste."
+    },
+    {
+      "icon_name": "tomato_solid_raw",
+      "family": "fruit",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "seeds"
+      ],
+      "colors": [
+        "fruit_red",
+        "neutral_beige"
+      ],
+      "short_desc": "tomato_solid_raw; physical silhouette: solid."
+    },
+    {
+      "icon_name": "vinegar_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "neutral_beige",
+        "sauce_brown"
+      ],
+      "short_desc": "vinegar_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "water_liquid_raw",
+      "family": "sauce",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "none"
+      ],
+      "colors": [
+        "fruit_blue",
+        "neutral_beige"
+      ],
+      "short_desc": "water_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "waterless_braised_shrimp_solid_cooked",
+      "family": "meat",
+      "template": "solid",
+      "variant": "solid",
+      "marks": [
+        "steam"
+      ],
+      "colors": [
+        "meat_red",
+        "fat_white"
+      ],
+      "short_desc": "waterless_braised_shrimp_solid_cooked; physical silhouette: solid."
+    },
+    {
+      "icon_name": "white_sauce_paste_cooked",
+      "family": "sauce",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "surface_band"
+      ],
+      "colors": [
+        "paste_cream",
+        "flour_white"
+      ],
+      "short_desc": "white_sauce_paste_cooked; physical silhouette: paste."
+    },
+    {
+      "icon_name": "yolk_liquid_raw",
+      "family": "egg",
+      "template": "liquid",
+      "variant": "liquid",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "yolk_yellow",
+        "egg_white"
+      ],
+      "short_desc": "yolk_liquid_raw; physical silhouette: liquid."
+    },
+    {
+      "icon_name": "yolk_paste_paste_raw",
+      "family": "egg",
+      "template": "paste",
+      "variant": "paste",
+      "marks": [
+        "highlight_dot"
+      ],
+      "colors": [
+        "paste_yellow",
+        "yolk_yellow",
+        "egg_white"
+      ],
+      "short_desc": "yolk_paste_paste_raw; physical silhouette: paste."
+    }
+  ]
+}

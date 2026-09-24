@@ -16,7 +16,21 @@ svg.call(
 
 const tooltip = d3.select("#tooltip");
 
-function nodeHalfTooltip(state, flavor, idx, nodeId) {
+// Temporary debugging overlay; set false to hide original recipe indices.
+const SHOW_ORIGINAL_NODE_INDICES = true;
+
+function originalNodeIndexHTML(node, side, idx) {
+  if (!SHOW_ORIGINAL_NODE_INDICES) return "";
+  const lines = [];
+  for (const key of ["R1", "R2"]) {
+    const value = node?.[key === "R1" ? "r1_node" : "r2_node"];
+    if (value != null) lines.push(`${key} original index: ${Number(value)}${side === key ? " (hover)" : ""}`);
+  }
+  if (!lines.length && idx != null) lines.push(`Original index: ${Number(idx)}`);
+  return lines.length ? `<span style="font-size:11px;opacity:0.8;">${lines.join("<br/>")}</span><br/>` : "";
+}
+
+function nodeHalfTooltip(state, flavor, idx, nodeId, node = null, side = null) {
 
   if (!state) return "";
 
@@ -24,6 +38,7 @@ function nodeHalfTooltip(state, flavor, idx, nodeId) {
 
   return `
     ${nodeId ? `<span style="font-size:10px;opacity:0.5;">${nodeId}</span><br/>` : ""}
+    ${originalNodeIndexHTML(node, side, idx)}
     <b>${name}</b><br/><br/>
     ${physical}<br/>
     ${chemical}<br/>
@@ -520,7 +535,10 @@ function getCenterFillColor(node) {
 }
 
 function applyPhysicalRingStyle(selection, physicalState, node) {
-  const s = normValue(physicalState);
+  const raw = normValue(physicalState);
+  // Rendering only: preserve the raw state for matching, tooltips and icons.
+  const s = ["cube", "slice", "shred", "dice", "chunk", "cut", "块", "片", "丝", "丁"].includes(raw)
+    ? "pieces" : raw;
 
   // 默认
   selection
@@ -533,7 +551,7 @@ function applyPhysicalRingStyle(selection, physicalState, node) {
     selection.attr("stroke-dasharray", null);
   } else if (s === "paste") {
     selection.attr("stroke-dasharray", "26 10");
-  } else if (s === "cut" || s === "cube" || s === "slice" || s === "chunk") {
+  } else if (s === "pieces") {
     selection.attr("stroke-dasharray", "18 10");
   } else if (s === "liquid") {
     selection.attr("stroke-dasharray", "10 8");
@@ -2530,7 +2548,7 @@ function nb_detectBranches(nodes, edges) {
   but are NOT spine nodes themselves.
 */
  
-function nb_collectAuxForSpineNode(spineNodeId, inMap, nodeById, spineSet) {
+function nb_collectAuxForSpineNode(spineNodeId, inMap, nodeById, spineSet, attachedMainIds = new Set()) {
   const result = [];
   const visited = new Set();
  
@@ -2543,7 +2561,7 @@ function nb_collectAuxForSpineNode(spineNodeId, inMap, nodeById, spineSet) {
       .filter(x => x.node && !spineSet.has(x.node.id));
  
     for (const { edge, node } of parents) {
-      if (nb_isAux(node)) {
+      if (nb_isAux(node) || attachedMainIds.has(node.id)) {
         if (!result.find(n => n.id === node.id)) result.push(node);
         dfs(node.id); // recurse up aux chain
       }
@@ -2658,6 +2676,39 @@ function nb_assignPositions(branches, nodes, edges) {
   With:
     const branches = newBranchLayout(nodes, edges, graph);
 */
+// Layout-only classification. Keep domain, recipe indices and match kind intact.
+function findAttachedMainNodes(nodes, edges) {
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  const incoming = new Map(nodes.map(n => [n.id, []]));
+  const outgoing = new Map(nodes.map(n => [n.id, []]));
+  for (const e of edges) {
+    if (!byId.has(e.source) || !byId.has(e.target)) continue;
+    incoming.get(e.target).push(e);
+    outgoing.get(e.source).push(e);
+  }
+  const attached = new Set();
+  for (const n of nodes) {
+    if (!nb_isMain(n) || incoming.get(n.id).length) continue;
+    const exits = outgoing.get(n.id);
+    // Keep processed, split, multi-target and mixed-side process nodes on spines.
+    if (!exits.length || exits.some(e => !isAddEdge(e))) continue;
+    const targets = new Set(exits.map(e => e.target));
+    if (targets.size !== 1) continue;
+    const targetId = [...targets][0];
+    const target = byId.get(targetId);
+    if (!target || !(nb_isMain(target) || nb_isContainer(target))) continue;
+    // This must join an established process, not start the primary food chain.
+    const hasReceiver = incoming.get(targetId).some(e => {
+      if (e.source === n.id) return false;
+      const source = byId.get(e.source);
+      return (nb_isMain(source) || nb_isContainer(source)) &&
+        (!isAddEdge(e) || incoming.get(source.id).length > 0);
+    });
+    if (hasReceiver) attached.add(n.id);
+  }
+  return attached;
+}
+
 function newBranchLayout(nodes, edges, graph) {
   nodes.forEach(n => { n.x = null; n.y = null; });
 
@@ -2668,7 +2719,8 @@ function newBranchLayout(nodes, edges, graph) {
   const mainHalfOffset = getHalfOffsetForNode({ domain: "main", kind: "merged_similar" });
   const auxHalfOffset  = getHalfOffsetForNode({ domain: "aux",  kind: "merged_similar" });
 
-  const mainNodes = nodes.filter(n => nb_isMain(n) || nb_isContainer(n));
+  const attachedMainIds = findAttachedMainNodes(nodes, edges);
+  const mainNodes = nodes.filter(n => !attachedMainIds.has(n.id) && (nb_isMain(n) || nb_isContainer(n)));
   const mainIds   = new Set(mainNodes.map(n => n.id));
 
   // ── Step 1: Deduplicate edges by source→target ──────────────────────────────────
@@ -2725,6 +2777,21 @@ function newBranchLayout(nodes, edges, graph) {
       containerAddInCount.set(e.target, (containerAddInCount.get(e.target) || 0) + 1);
     }
   }
+
+  // A container receiving multiple prepared food streams is a junction even
+  // if its own previous snapshot was empty (e.g. a preheated assembly mold).
+  // Do not union those incoming streams into one layout component.
+  const mainAddSources = new Map();
+  for (const e of edgesDedup) {
+    const source = nodeById.get(e.source);
+    const target = nodeById.get(e.target);
+    if (!source || !target || !isAddEdge(e) || !nb_isContainer(target)) continue;
+    if (!nb_isMain(source) || attachedMainIds.has(source.id)) continue;
+    if (!mainAddSources.has(target.id)) mainAddSources.set(target.id, new Set());
+    mainAddSources.get(target.id).add(source.id);
+  }
+  const multiMainJunctions = new Set([...mainAddSources]
+    .filter(([, sources]) => sources.size > 1).map(([id]) => id));
 
   // Build process-only in-map for containers (to find chain origins).
   const containerProcessIn = new Map(nodes.map(n => [n.id, []]));
@@ -2843,10 +2910,11 @@ function newBranchLayout(nodes, edges, graph) {
   const adjAll = new Map(nodes.map(n => [n.id, new Set()]));
   for (const e of edgesDedup) {
     if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+    if (attachedMainIds.has(e.source) || attachedMainIds.has(e.target)) continue;
     if (isAddEdge(e)) {
       const tgt = nodeById.get(e.target);
       if (!tgt || !nb_isContainer(tgt)) continue;   // add → non-container → cross
-      if (containerNonEmpty.get(tgt.id)) continue;  // add → non-empty container → cross
+      if (containerNonEmpty.get(tgt.id) || multiMainJunctions.has(tgt.id)) continue;  // add → occupied container or multi-food junction → cross
       // Falls through: add → empty container (any kind: merged or only) → same branch
     } else {
       // Process edge: only→merged is cross when src is not inline on the merged spine.
@@ -3535,8 +3603,13 @@ function newBranchLayout(nodes, edges, graph) {
        : spineNode.y)
       : (compCenterY.get(comp) ?? NB_BASE_Y);
 
-    const auxNodes = nb_collectAuxForSpineNode(spineNode.id, inMapFull, nodeById, globalSpineSet);
+    const auxNodes = nb_collectAuxForSpineNode(spineNode.id, inMapFull, nodeById, globalSpineSet, attachedMainIds);
     if (auxNodes.length === 0) return;
+
+    const hasAttachedMain = auxNodes.some(n => attachedMainIds.has(n.id));
+    const localDX = hasAttachedMain ? Math.max(NB_AUX_DX, 64) : NB_AUX_DX;
+    const localRowGap = NB_AUX_ROW_GAP;
+    const clearance = hasAttachedMain ? mainHalfOffset + 55 : 0;
 
     const r1Aux = auxNodes.filter(n => n.kind === "only_r1");
     const r2Aux = auxNodes.filter(n => n.kind === "only_r2");
@@ -3553,17 +3626,17 @@ function newBranchLayout(nodes, edges, graph) {
       e => !isAddEdge(e) && mainIds.has(e.source) && nodeIds.has(e.source)
     );
 
-    if (hasCrossBranch) {
+    if (hasCrossBranch || hasAttachedMain) {
       // Sloped: aux clusters above (R1) / below (R2) the center axis
-      const r1Base = -(mainHalfOffset + NB_AUX_CROSS_EXTRA);
-      const r2Base =  (mainHalfOffset + NB_AUX_CROSS_EXTRA);
-      const shBase = -(auxHalfOffset  + 4);
+      const r1Base = -Math.max(mainHalfOffset + NB_AUX_CROSS_EXTRA, clearance);
+      const r2Base = Math.max(mainHalfOffset + NB_AUX_CROSS_EXTRA, clearance);
+      const shBase = -Math.max(auxHalfOffset + 4, clearance + (hasAttachedMain && r1Aux.length ? Math.ceil(r1Aux.length / MAX_ROW) * localRowGap : 0));
       function placeSloped(group, yBase, rowDir) {
         group.forEach((aux, i) => {
           const row = Math.floor(i / MAX_ROW);
           const col = i % MAX_ROW;
-          aux.x = spineNode.x - NB_AUX_DX * (col + 1);
-          aux.y = centerY + yBase + row * NB_AUX_ROW_GAP * rowDir;
+          aux.x = spineNode.x - localDX * (col + 1);
+          aux.y = centerY + yBase + row * localRowGap * rowDir;
         });
       }
       placeSloped(r1Aux, r1Base, -1);
@@ -3576,8 +3649,8 @@ function newBranchLayout(nodes, edges, graph) {
         group.forEach((aux, i) => {
           const row = Math.floor(i / MAX_ROW);
           const col = i % MAX_ROW;
-          aux.x = spineNode.x - NB_AUX_DX * (col + 1);
-          aux.y = spineNode.y + yJitter + row * NB_AUX_ROW_GAP * rowDir;
+          aux.x = spineNode.x - localDX * (col + 1);
+          aux.y = spineNode.y + yJitter + row * localRowGap * rowDir;
         });
       }
       placeHoriz(r1Aux, -NB_AUX_HORIZ_JITTER, -1);
@@ -4075,7 +4148,7 @@ if (greek) {
 
       top
         .on("mouseenter", function(event) {
-          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node, d.id));
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node, d.id, d, "R1"));
         })
         .on("mousemove", function(event) {
           tooltip
@@ -4091,7 +4164,7 @@ if (greek) {
 
       bottom
         .on("mouseenter", function(event) {
-          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node, d.id));
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node, d.id, d, "R2"));
         })
         .on("mousemove", function(event) {
           tooltip
@@ -4229,7 +4302,7 @@ if (bottomGreek) {
 
       top
         .on("mouseenter", function(event) {
-          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node, d.id));
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r1, d.flavor_r1, d.r1_node, d.id, d, "R1"));
         })
         .on("mousemove", function(event) {
           tooltip
@@ -4253,7 +4326,7 @@ if (bottomGreek) {
 
       bottom
         .on("mouseenter", function(event) {
-          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node, d.id));
+          tooltip.style("opacity", 1).html(nodeHalfTooltip(d.state_r2, d.flavor_r2, d.r2_node, d.id, d, "R2"));
         })
         .on("mousemove", function(event) {
           tooltip
@@ -4338,7 +4411,7 @@ if (bottomGreek) {
 
       tooltip
         .style("opacity", 1)
-        .html(nodeHalfTooltip(state, flavor, d.r1_node ?? d.r2_node, d.id));
+        .html(nodeHalfTooltip(state, flavor, d.r1_node ?? d.r2_node, d.id, d));
     })
     .on("mousemove", function(event) {
       tooltip

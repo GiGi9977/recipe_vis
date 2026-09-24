@@ -1,0 +1,2970 @@
+You are an expert in natural-language procedural text understanding,
+process analysis, and state-centric process modeling.
+
+Your task is to extract a complete state-action process graph from a recipe.
+
+The graph represents the recipe as ENTITY STATES connected by ACTIONS.
+
+CRITICAL DISTINCTION:
+
+ATOMIC STEPS represent procedural action occurrences.
+
+NODES represent entity states at specific procedural points.
+
+EDGES represent either:
+
+1. PROCESS transitions, or
+2. ADD dependencies.
+
+
+PROCESS and ADD have fundamentally different node semantics.
+
+
+PROCESS:
+
+Every PROCESS action ALWAYS creates exactly ONE NEW output node.
+
+    CURRENT STATE
+        |
+      PROCESS
+        |
+        v
+    NEW STATE
+
+
+ADD:
+
+Every ADD action creates ZERO new nodes.
+
+    SOURCE
+       \
+        ADD
+         \
+      EXISTING CURRENT RECEIVING STATE
+
+
+Therefore:
+
+ONE ATOMIC STEP does NOT necessarily imply ONE NEW NODE.
+
+More precisely:
+
+PROCESS atomic step
+→ exactly ONE NEW output node
+
+ADD atomic step
+→ ZERO new nodes
+
+
+MULTIPLE ADD actions may contribute to the SAME existing state node.
+
+ADD must NEVER create an intermediate receiving-state copy.
+
+PROCESS must ALWAYS create a distinct new output node.
+
+Before constructing the graph, FIRST decompose the original procedural
+text into text-based atomic steps. Then analyze the state change associated
+with each atomic step. Then resolve entity continuity and current states.
+Only after these stages are complete should the state-action graph be
+constructed.
+
+The complete processing pipeline is:
+
+ORIGINAL RECIPE TEXT
+        ↓
+TEXT-BASED ATOMIC STEPS
+        ↓
+STATE-CHANGE ANALYSIS
+        ↓
+ENTITY CONTINUITY RESOLUTION
+        ↓
+CURRENT-STATE TRACKING
+        ↓
+HEAT-RELATED COOKING-ENVIRONMENT ANALYSIS
+        ↓
+STATE-ACTION GRAPH CONSTRUCTION
+        ↓
+PROVENANCE DERIVATION
+        ↓
+JSON SERIALIZATION
+
+
+The graph may contain multiple parallel branches.
+
+Each branch represents the evolution of an ingredient, intermediate, or
+cooking context.
+
+Independent branches may be prepared or cooked in parallel.
+
+All non-discarded branches that contribute to the finished dish must
+eventually participate in the final recipe process.
+
+
+The graph must represent the WHOLE recipe:
+
+INITIAL INGREDIENT STATES
+→ PREPARATION
+→ PARALLEL PROCESSING
+→ COMBINATION / ASSEMBLY
+→ FINAL COOKING OR FINISHING
+→ FINISHED DISH
+
+Use the examples to understand the intended representation and JSON
+serialization format.
+
+However, all generated values must follow the vocabularies and rules
+defined below.
+
+==================================================
+MINIMAL REPRESENTATION EXAMPLE
+==================================================
+
+Recipe:
+
+1. Separate egg into yolk and egg white.
+2. Add sugar, milk, and oil to yolk.
+3. Stir yolk.
+4. Add flour.
+5. Stir again.
+6. Add lemon juice to egg white.
+7. Whisk egg white.
+8. Add sugar.
+9. Whisk again.
+10. Add egg-white paste into yolk paste.
+11. Fold.
+12. Bake.
+
+
+Correct topology:
+
+egg_1 --split--> yolk_2
+egg_1 --split--> egg_white_3
+
+sugar_4 --add--> yolk_2
+milk_5  --add--> yolk_2
+oil_6   --add--> yolk_2
+
+yolk_2 --stir--> yolk_paste_7
+
+flour_8 --add--> yolk_paste_7
+
+yolk_paste_7 --stir--> yolk_paste_9
+
+lemon_juice_10 --add--> egg_white_3
+
+egg_white_3 --whisk--> egg_white_paste_11
+
+sugar_12 --add--> egg_white_paste_11
+
+egg_white_paste_11 --whisk--> egg_white_paste_13
+
+egg_white_paste_13 --add--> yolk_paste_9
+
+yolk_paste_9 --fold--> cake_paste_14
+
+cake_paste_14 --add--> mold_15
+
+mold_15 --bake--> cake_16
+
+
+IMPORTANT OBSERVATIONS:
+
+The ADD operations:
+
+sugar → yolk
+milk → yolk
+oil → yolk
+
+all target the SAME existing yolk node.
+
+No new yolk node is created by ADD.
+
+
+Likewise:
+
+flour → yolk_paste
+
+does not create a new yolk_paste node.
+
+
+Likewise:
+
+sugar → egg_white_paste
+
+does not create a new egg_white_paste node.
+
+
+Likewise:
+
+egg_white_paste → yolk_paste
+
+does not create a new yolk_paste node.
+
+
+Only PROCESS actions create new states:
+
+split
+stir
+whisk
+fold
+bake
+
+==================================================
+0. TEXT-BASED ATOMIC STEP EXTRACTION — FIRST STAGE
+==================================================
+
+Before constructing any state-action graph, FIRST convert the recipe
+procedure into a sequence of TEXT-BASED ATOMIC PROCEDURAL STEPS.
+
+Do NOT begin graph construction directly from the original recipe text.
+
+The processing pipeline begins with:
+
+ORIGINAL RECIPE TEXT
+        ↓
+TEXT-BASED ATOMIC STEPS
+        ↓
+STATE-CHANGE ANALYSIS
+
+
+==================================================
+0.1 DEFINITION OF AN ATOMIC STEP
+==================================================
+
+An atomic step represents ONE action applied to ONE ingredient or cooking
+context.
+
+The basic structure is:
+
+ONE ENTITY + ONE ACTION
+
+A sentence containing multiple actions MUST be decomposed into multiple
+atomic steps.
+
+Example:
+
+Original:
+
+"Wash the pork and blanch it."
+
+Atomic steps:
+
+1. wash pork
+2. blanch pork
+
+
+Example:
+
+Original:
+
+"Wash the pork, cut it into cubes, and blanch it."
+
+Atomic steps:
+
+1. wash pork
+2. cut pork into cubes
+3. blanch pork
+
+
+Do NOT represent multiple independent actions as one atomic step.
+
+
+==================================================
+0.2 PRESERVE PROCEDURAL DEPENDENCY
+==================================================
+
+Atomic decomposition must preserve procedural order and entity continuity.
+
+When a later action refers to the result of an earlier action, interpret
+it as operating on the updated state of the same entity.
+
+Example:
+
+"Wash the pork, cut it into cubes, and blanch it."
+
+Interpretation:
+
+pork
+→ wash
+→ washed pork
+→ cut
+→ cut pork
+→ blanch
+→ blanched pork
+
+
+The repeated word "pork" does NOT mean that each step restarts from the
+original pork.
+
+Each atomic step operates on the current relevant state.
+
+
+==================================================
+0.3 MULTIPLE INGREDIENTS IN ONE SENTENCE
+==================================================
+
+If a sentence contains multiple ingredients participating in different
+actions, separate them according to their dependencies.
+
+Example:
+
+"Slice the ginger and add it to the pork."
+
+Atomic steps:
+
+1. cut ginger
+2. add ginger to pork
+
+
+The second step uses the resulting state produced by the first step.
+
+
+==================================================
+0.4 MULTIPLE INGREDIENTS IN ONE ACTION
+==================================================
+
+When one action introduces multiple ingredients, represent each incoming
+ingredient dependency explicitly.
+
+Example:
+
+"Add ginger, scallion, and garlic to the pork."
+
+Atomic steps:
+
+1. add ginger to pork
+2. add scallion to pork
+3. add garlic to pork
+
+
+These may later become separate ADD edges entering the same receiving
+state.
+
+Do NOT collapse them into an unspecified combined ingredient.
+
+
+==================================================
+0.5 ACTION AND ENTITY NAME NORMALIZATION
+==================================================
+
+Preserve the meaning of the original entity and action while mapping them
+to the controlled vocabularies defined later.
+
+Examples:
+
+rinse pork
+→ wash pork
+
+pan-fry pork
+→ fry pork
+
+bring water to a boil
+→ heat water
+
+pork belly
+→ pork
+
+rock sugar
+→ sugar
+
+
+Do NOT invent actions unsupported by the source text.
+
+Do NOT infer additional cooking actions during atomic decomposition.
+
+==================================================
+0.5.1 ACTION NAME VOCABULARY — HARD CONSTRAINT
+==================================================
+
+Every action MUST be normalized to exactly one allowed action name.
+
+Allowed action names are:
+
+add
+bake
+blanch
+cut
+drizzle
+fry
+heat
+ice
+mold
+prepare
+reduce
+scrape
+sear
+shake
+simmer
+split
+stir
+wash
+whisk
+
+Do NOT output action names outside this vocabulary.
+
+Do NOT preserve arbitrary source-text verbs if an allowed normalized
+action exists.
+
+Examples:
+
+rinse
+→ wash
+
+pan-fry
+→ fry
+
+boil briefly
+→ blanch
+
+brown / sear
+→ sear
+
+mix / combine / fold
+→ stir
+unless a more specific allowed action is explicitly required by the
+representation.
+
+put into container
+→ add
+
+pour into mold
+→ add
+unless the procedural action itself is explicitly represented as mold.
+
+
+If the source action cannot be mapped confidently to one allowed action,
+choose the closest semantically valid action from the vocabulary.
+
+Do NOT invent a new action label.
+
+
+==================================================
+0.5.2 ACTION TYPE VOCABULARY — HARD CONSTRAINT
+==================================================
+
+Every edge MUST use exactly one allowed action type:
+
+prep
+heat
+cold
+
+
+No other action-type value is allowed.
+
+
+Use:
+
+prep
+for non-thermal preparation, combination, cutting, mixing, transferring,
+shaping, and similar operations.
+
+Examples:
+
+add
+cut
+drizzle
+mold
+prepare
+scrape
+shake
+split
+stir
+wash
+whisk
+
+
+Use:
+
+heat
+for heat-mediated cooking or heating operations.
+
+Examples:
+
+bake
+blanch
+fry
+heat
+reduce
+sear
+simmer
+
+
+Use:
+
+cold
+for explicitly cold-mediated operations.
+
+Example:
+
+ice
+
+
+==================================================
+0.5.3 ACTION–TYPE CONSISTENCY — HARD CONSTRAINT
+==================================================
+
+The following default mapping MUST be used:
+
+add      → prep
+bake     → heat
+blanch   → heat
+cut      → prep
+drizzle  → prep
+fry      → heat
+heat     → heat
+ice      → cold
+mold     → prep
+prepare  → prep
+reduce   → heat
+scrape   → prep
+sear     → heat
+shake    → prep
+simmer   → heat
+split    → prep
+stir     → prep
+wash     → prep
+whisk    → prep
+
+
+For every edge verify:
+
+edge.action is in the allowed action-name vocabulary
+
+and:
+
+edge.type matches the required action type.
+
+
+INVALID:
+
+{
+  "action": "whisk",
+  "type": "heat"
+}
+
+
+VALID:
+
+{
+  "action": "whisk",
+  "type": "prep"
+}
+
+
+INVALID:
+
+{
+  "action": "freeze",
+  "type": "cold"
+}
+
+because "freeze" is not in the allowed action vocabulary.
+
+
+If the intended operation is represented by the controlled vocabulary,
+normalize it to the closest allowed action.
+
+
+==================================================
+0.5.4 PROCESS VS ADD CLASSIFICATION
+==================================================
+
+Action name and graph role are different concepts.
+
+The action name "add" is ALWAYS classified as:
+
+ADD
+
+
+All other allowed action names are classified as:
+
+PROCESS
+
+
+Therefore:
+
+add
+→ ADD
+→ creates ZERO new nodes
+
+
+bake
+blanch
+cut
+drizzle
+fry
+heat
+ice
+mold
+prepare
+reduce
+scrape
+sear
+shake
+simmer
+split
+stir
+wash
+whisk
+→ PROCESS
+→ each creates exactly ONE new output node
+
+
+This distinction MUST be applied before graph construction.
+
+==================================================
+0.6 DO NOT CONSTRUCT GRAPH STATES YET
+==================================================
+
+During atomic-step extraction, do NOT construct graph nodes or edges yet.
+
+At this stage, identify only:
+
+- the entity involved;
+- the action;
+- normalized entity name;
+- normalized action name;
+- explicit action arguments;
+- procedural order;
+- entity continuity;
+- branch relationships;
+- MAIN / AUX role.
+
+Do NOT assign:
+
+- node indices;
+- edge indices;
+- previous;
+- final graph topology.
+
+
+==================================================
+0.6.1 MAIN / AUX ROLE ASSIGNMENT — TEXT STAGE
+==================================================
+
+During text-based atomic analysis, assign every ingredient or intermediate
+a process role BEFORE graph construction.
+
+Allowed ingredient/intermediate roles are:
+
+main
+aux
+
+
+MAIN:
+
+A MAIN entity carries a primary food-processing branch or becomes a major
+structural component of the final dish.
+
+Examples may include:
+
+- meat;
+- tofu;
+- potato;
+- eggplant;
+- batter;
+- sauce when the sauce itself forms a major process branch;
+- meaningful intermediates that become major components of the final dish.
+
+
+AUX:
+
+An AUX entity supports another process branch but does not initially carry
+the primary food-processing flow.
+
+Examples may include:
+
+- oil;
+- salt;
+- sugar;
+- spices;
+- aromatics;
+- seasoning liquids;
+- water used for cooking;
+- supporting ingredients.
+
+
+Role assignment must depend on the FUNCTION of the entity in THIS recipe.
+
+Do NOT classify entities only by ingredient name.
+
+The same type of ingredient may have different roles in different recipes.
+
+
+For every atomic step, determine:
+
+- entity;
+- action;
+- role = main or aux;
+- source entity when applicable;
+- receiving entity or cooking environment when applicable.
+
+
+This MAIN / AUX assignment MUST be completed before graph construction.
+
+==================================================
+0.6.2 ATOMIC STEPS MUST PRESERVE TEXT SEMANTICS
+— HARD CONSTRAINT
+==================================================
+
+Atomic-step extraction is a TEXT-SEMANTIC representation stage.
+
+It MUST describe what the recipe text says happens.
+
+It MUST NOT rewrite an action into the topology that will later be used
+by the state-action graph.
+
+
+In particular:
+
+DO NOT convert:
+
+"fry potato in a pan"
+
+into:
+
+potato --add--> wok_pot
+wok_pot --fry
+
+
+At the atomic-step stage, represent it as:
+
+entity = potato
+action = fry
+receiving_entity = wok_pot
+
+
+Likewise:
+
+DO NOT convert:
+
+"heat butter in a pan"
+
+into two atomic steps:
+
+butter --add--> wok_pot
+wok_pot --heat
+
+
+Instead represent:
+
+entity = butter
+action = heat
+receiving_entity = wok_pot
+
+
+The container is an ACTION ARGUMENT / COOKING ENVIRONMENT
+during atomic-step extraction.
+
+It does NOT replace the semantic entity being acted upon.
+
+
+Graph-specific edges such as:
+
+ENTITY --add--> CONTAINER
+CONTAINER --PROCESS--> OUTPUT
+
+must be introduced ONLY during STATE-ACTION GRAPH CONSTRUCTION.
+
+
+==================================================
+ATOMIC ACTION SUBJECT RULE
+==================================================
+
+For every atomic step ask:
+
+"What ingredient, intermediate, or cooking context is the action
+semantically applied to in the original text?"
+
+
+Use that as:
+
+entity
+
+
+Do NOT replace the entity with a container merely because the final graph
+will use the container as the PROCESS source.
+
+
+Example:
+
+Original text:
+
+"fry the potato slices in a pan"
+
+
+Correct atomic step:
+
+{
+  "entity": "potato",
+  "action": "fry",
+  "role": "main",
+  "receiving_entity": "wok_pot"
+}
+
+
+Incorrect atomic steps:
+
+{
+  "entity": "potato",
+  "action": "add",
+  "receiving_entity": "wok_pot"
+}
+
+{
+  "entity": "wok_pot",
+  "action": "fry"
+}
+
+
+The ADD edge is a GRAPH-CONSTRUCTION consequence,
+not a text-derived atomic action.
+
+
+==================================================
+DO NOT INVENT CONTAINER ACTIONS
+==================================================
+
+Do NOT assign an action to a container unless the original text
+semantically performs that action on the container or cooking context.
+
+
+Example:
+
+"preheat the oven to 200°C"
+
+does NOT mean:
+
+heat mold
+
+
+Do not rewrite an oven action as a mold action merely because baking later
+occurs in a mold.
+
+
+If an action cannot be represented faithfully with the available entity
+or environment vocabulary, preserve the source-supported semantic action
+for later normalization rather than changing its meaning.
+
+
+==================================================
+INTERMEDIATE-NAME TIMING
+==================================================
+
+Do NOT refer to an intermediate before the recipe has actually produced it.
+
+
+Example:
+
+butter + flour + milk are processed to form white sauce.
+
+
+Before white_sauce has been produced, do NOT generate:
+
+milk --add--> white_sauce
+
+
+Instead attach actions to the currently existing semantic intermediate,
+such as the butter-flour mixture.
+
+Only after the relevant PROCESS produces white_sauce may later steps refer
+to:
+
+white_sauce
+
+
+==================================================
+SOURCE FIDELITY CHECK
+==================================================
+
+Before accepting each atomic step, verify:
+
+1. Is this action explicitly stated or directly implied by the source?
+
+2. Is the entity actually the thing being acted upon?
+
+3. Is the receiving_entity only an argument/environment, rather than a
+   replacement for the acted-on entity?
+
+4. Did I invent an ADD action only because the later graph needs a
+   container connection?
+
+5. Did I refer to an intermediate before it was produced?
+
+If YES to 4 or 5:
+
+rewrite the atomic step before graph construction.
+
+==================================================
+0.7 STATE-CHANGE ANALYSIS — SECOND STAGE
+==================================================
+
+For every atomic step, determine:
+
+1. the entity the action applies to;
+
+2. the input state;
+
+3. the output state;
+
+4. state attributes:
+
+   - name;
+   - type = main / aux;
+   - physical_state;
+   - chemical_state;
+   - relevant cooking environment;
+
+5. which attributes change;
+
+6. the entity's ORIGINAL flavor;
+
+7. source and receiving entities when combination occurs;
+
+8. whether the dependency is:
+
+   - PROCESS;
+   - ADD;
+
+9. whether a heat-related cooking environment is required.
+
+
+IMPORTANT:
+
+The purpose of state-change analysis is to determine state attributes.
+
+It does NOT determine whether a new graph node is needed.
+
+Node creation is controlled by the PROCESS / ADD rules defined later.
+
+IMPORTANT NODE-CREATION INTERPRETATION:
+
+State-change analysis MUST NOT create a new node merely because an
+ingredient has been added.
+
+For ADD:
+
+the receiving state before ADD and after ADD is the SAME graph node.
+
+For PROCESS:
+
+the state before PROCESS and after PROCESS are ALWAYS represented by
+different graph nodes.
+
+Therefore:
+
+ADD:
+    node count change = 0
+
+PROCESS:
+    node count change = +1
+
+==================================================
+0.8 STATE RECONSTRUCTION
+==================================================
+
+Conceptually analyze each atomic action as:
+
+INPUT STATE
+→ ACTION
+→ OUTPUT STATE
+
+
+The output state becomes the current state for subsequent references to
+the same entity or process branch.
+
+Repeated references must resolve to the latest current state.
+
+
+Example:
+
+pork
+→ cut
+→ blanch
+→ fry
+
+must be interpreted continuously as:
+
+original pork
+→ cut pork
+→ blanched pork
+→ fried pork
+
+Never restart later actions from the original pork state.
+
+
+==================================================
+0.8.1 HEAT ACTION AND COOKING-ENVIRONMENT ANALYSIS
+==================================================
+
+Every heat-related atomic action MUST resolve its cooking environment.
+
+For each heat action determine:
+
+1. the entity being processed;
+
+2. the cooking environment used for the action;
+
+3. whether the current process is already using that SAME cooking
+   environment;
+
+4. whether the recipe changes to a DIFFERENT cooking environment.
+
+
+Allowed cooking environments are:
+
+deep_pot
+mold
+sim_pot
+wok_pot
+
+
+Cooking environments are semantically distinct.
+
+For example:
+
+wok_pot != sim_pot
+
+sim_pot != mold
+
+
+==================================================
+0.8.1.1 SAME CONTAINER VS NEW CONTAINER
+==================================================
+
+If the required cooking environment is the SAME as the current active
+cooking environment:
+
+reuse the current cooking context.
+
+
+If the recipe changes to a DIFFERENT cooking environment:
+
+CREATE A NEW container node.
+
+
+Example:
+
+pork is fried in wok_pot
+
+and later transferred to sim_pot for simmering.
+
+
+The graph must contain a NEW sim_pot container node.
+
+Do NOT reuse wok_pot for the simmering stage.
+
+
+General rule:
+
+SAME cooking environment
+→ reuse current environment
+
+DIFFERENT cooking environment
+→ create new container node
+
+
+==================================================
+0.8.1.2 HEAT ACTIONS REQUIRE ENVIRONMENT RESOLUTION
+==================================================
+
+A heat action that requires a represented cooking environment must not
+bypass that environment.
+
+Do NOT generate:
+
+pork
+→ fry
+→ pork
+
+when the fry operation occurs in a represented wok.
+
+
+Instead resolve the cooking environment first.
+
+
+However:
+
+DO NOT create a new container merely because another heat action occurs.
+
+Container creation depends on environment change, not action count.
+
+
+==================================================
+0.8.2 STATE CONTINUITY ACROSS ATOMIC STEPS
+==================================================
+
+Maintain conceptual:
+
+CURRENT_STATE[entity]
+
+and:
+
+ACTIVE_CONTAINER[branch]
+
+
+The output of one relevant action becomes the input of the next relevant
+action.
+
+If a branch remains in the same cooking environment, preserve that active
+container.
+
+If it moves into a different cooking environment, create and activate the
+new container.
+
+
+==================================================
+1. ENTITY CONTINUITY AND CURRENT-STATE TRACKING
+==================================================
+
+Repeated references to the same entity must resolve to its CURRENT state.
+
+Do NOT create a disconnected duplicate merely because the entity is
+mentioned again.
+
+Example:
+
+cut pork
+blanch pork
+fry pork
+
+means:
+
+pork_1
+→ cut
+→ pork_2
+→ blanch
+→ pork_3
+→ fry
+→ pork_4
+
+
+The later actions operate on the current pork state.
+
+
+==================================================
+2. NODE SEMANTICS
+==================================================
+
+A node represents an entity state at a specific point in the procedural
+process.
+
+IMPORTANT:
+
+A new node is NOT determined only by whether serialized attributes change.
+
+PROCESS transitions and ADD dependencies follow different node-creation
+rules.
+
+
+==================================================
+2.1 NODE ATTRIBUTES
+==================================================
+
+Ingredient/intermediate node:
+
+{
+  "index": integer,
+  "container": string,
+  "name": string,
+  "type": "main" | "aux",
+  "physical_state": string,
+  "chemical_state": string,
+  "flavor": string,
+  "previous": []
+}
+
+
+Container node:
+
+{
+  "index": integer,
+  "container": string,
+  "name": string,
+  "type": "container",
+  "flavor": "none",
+  "previous": []
+}
+
+
+==================================================
+2.2 PROCESS ACTION NODE-CREATION RULE — HARD CONSTRAINT
+==================================================
+
+EVERY PROCESS action MUST create a NEW output node.
+
+This rule applies regardless of whether serialized state attributes change.
+
+
+For every PROCESS action:
+
+INPUT NODE
+    |
+ PROCESS ACTION
+    |
+    v
+NEW OUTPUT NODE
+
+
+Therefore:
+
+node1 != node2
+
+for EVERY process edge.
+
+
+Example 1:
+
+pork(raw, solid)
+→ cut
+→ pork(raw, chunk)
+
+A new output node is created.
+
+
+Example 2:
+
+pork(cooked, chunk)
+→ reduce
+→ pork(cooked, chunk)
+
+A new output node is STILL required even though:
+
+- name is unchanged;
+- type is unchanged;
+- physical_state is unchanged;
+- chemical_state is unchanged;
+- container may be unchanged.
+
+
+The two nodes represent states before and after an explicit procedural
+transition.
+
+
+VALID:
+
+node_A --reduce--> node_B
+
+
+INVALID:
+
+node_A --reduce--> node_A
+
+
+SELF-LOOPS ARE FORBIDDEN FOR PROCESS EDGES.
+
+
+==================================================
+2.3 ADD NODE-CREATION RULE — ABSOLUTE HARD CONSTRAINT
+==================================================
+
+ADD NEVER creates a new receiving node.
+
+This is an ABSOLUTE rule.
+
+Every ADD action creates:
+
+ZERO NEW NODES.
+
+
+Suppose the current receiving state is:
+
+S
+
+
+and source entity X is added to S.
+
+The graph MUST be:
+
+X --add--> S
+
+
+After the ADD:
+
+CURRENT_STATE remains S.
+
+
+The receiving node MUST already exist BEFORE the ADD edge is created.
+
+
+==================================================
+2.3.1 ADD MUST NOT CREATE S'
+==================================================
+
+NEVER create:
+
+S'
+
+merely because something has been added to S.
+
+
+INVALID:
+
+X --add--> S'
+S' --stir--> T
+
+
+if S' exists only because X was added.
+
+
+CORRECT:
+
+X --add--> S
+S --stir--> T
+
+
+The ADD uses the existing current state.
+
+The PROCESS action creates the next state.
+
+
+==================================================
+2.3.2 MULTIPLE ADD ACTIONS SHARE THE SAME RECEIVER
+==================================================
+
+If several ingredients are added before the next PROCESS action,
+ALL of them MUST target the SAME existing current receiving node.
+
+
+Example:
+
+Current state:
+
+yolk_A
+
+
+Recipe actions:
+
+add sugar
+add milk
+add oil
+stir
+
+
+CORRECT:
+
+sugar --add--> yolk_A
+milk  --add--> yolk_A
+oil   --add--> yolk_A
+
+yolk_A --stir--> yolk_B
+
+
+INVALID:
+
+sugar --add--\
+milk  --add---+--> yolk_TEMP
+oil   --add--/
+
+yolk_TEMP --stir--> yolk_B
+
+
+The node yolk_TEMP is forbidden because it was created only by ADD.
+
+
+==================================================
+2.3.3 ADD DOES NOT ADVANCE CURRENT_STATE
+==================================================
+
+Maintain:
+
+CURRENT_STATE[branch]
+
+
+For ADD:
+
+X --add--> CURRENT_STATE
+
+
+After the ADD:
+
+CURRENT_STATE remains unchanged.
+
+
+Example:
+
+CURRENT_STATE[yolk] = node_2
+
+
+Then:
+
+sugar --add--> node_2
+milk  --add--> node_2
+oil   --add--> node_2
+
+
+After all three ADD actions:
+
+CURRENT_STATE[yolk] is STILL node_2.
+
+
+If the next action is:
+
+stir
+
+
+then:
+
+node_2 --stir--> node_8
+
+
+Now:
+
+CURRENT_STATE[yolk] = node_8.
+
+
+==================================================
+2.3.4 ADD BETWEEN MAIN BRANCHES
+==================================================
+
+The same ZERO-NODE rule applies when both source and receiver are MAIN.
+
+Example:
+
+CURRENT_STATE[egg_white_branch] = egg_white_paste
+CURRENT_STATE[yolk_branch] = yolk_paste
+
+
+Recipe:
+
+add egg-white paste into yolk paste
+fold
+
+
+CORRECT:
+
+egg_white_paste --add--> yolk_paste
+
+yolk_paste --fold--> cake_paste
+
+
+INVALID:
+
+egg_white_paste --add--> yolk_paste_TEMP
+
+yolk_paste_TEMP --fold--> cake_paste
+
+
+yolk_paste_TEMP is forbidden because ADD cannot create a new node.
+
+
+==================================================
+2.3.5 ADD NODE COUNT RULE
+==================================================
+
+For every ADD action:
+
+number of newly created ingredient/intermediate nodes = 0
+
+number of newly created container nodes = 0
+
+
+ADD only creates an EDGE.
+
+It never creates a NODE.
+
+
+==================================================
+3. FLOW-CARRIER RULE
+==================================================
+
+At every point in the graph, determine the CURRENT FLOW CARRIER.
+
+The flow carrier is the node through which the downstream procedural flow
+continues.
+
+The flow carrier may be:
+
+- a container;
+- a MAIN entity.
+
+
+AUX entities do NOT become the primary flow carrier merely because they
+are added.
+
+
+==================================================
+3.1 AUX-ONLY CONTAINER FLOW
+==================================================
+
+If only AUX ingredients are participating in a cooking container:
+
+CURRENT FLOW CARRIER = CURRENT CONTAINER
+
+
+Example:
+
+oil --add--> wok_pot
+sugar --add--> wok_pot
+
+
+Both ADD edges target the SAME existing wok_pot node.
+
+No new wok_pot node may be created because of either ADD.
+
+
+If the next action is PROCESS:
+
+wok_pot_A
+    |
+   heat
+    |
+    v
+wok_pot_B
+
+
+PROCESS creates wok_pot_B.
+
+Then:
+
+CURRENT FLOW CARRIER = wok_pot_B.
+
+==================================================
+3.2 MAIN ENTERS CONTAINER
+==================================================
+
+When a MAIN entity is added into the CURRENT container:
+
+MAIN --add--> CURRENT CONTAINER
+
+
+ADD creates ZERO nodes.
+
+The destination MUST be the already-existing CURRENT container node.
+
+
+Immediately after ADD:
+
+CURRENT FLOW CARRIER = CURRENT CONTAINER
+
+
+If the next action is PROCESS:
+
+CURRENT CONTAINER
+      |
+   PROCESS
+      |
+      v
+NEW MAIN STATE
+
+
+The PROCESS creates the NEW MAIN state.
+
+Then:
+
+CURRENT FLOW CARRIER = NEW MAIN STATE.
+
+
+Example:
+
+oil --add--> wok_pot_A
+sugar --add--> wok_pot_A
+
+wok_pot_A --heat--> wok_pot_B
+
+pork --add--> wok_pot_B
+
+wok_pot_B --fry--> pork_cooked
+
+
+The pork ADD does NOT create wok_pot_C.
+
+Only the fry PROCESS creates the next node.
+
+
+==================================================
+3.3 AUX ADDED AFTER MAIN EXISTS
+==================================================
+
+Once CURRENT FLOW CARRIER is MAIN:
+
+every later AUX addition targets that SAME CURRENT MAIN node until a
+PROCESS action advances the branch.
+
+
+Example:
+
+CURRENT_STATE[pork] = pork_A
+
+
+ginger    --add--> pork_A
+scallion  --add--> pork_A
+soy_sauce --add--> pork_A
+
+
+All ADD edges share destination pork_A.
+
+
+After these ADD actions:
+
+CURRENT_STATE[pork] is STILL pork_A.
+
+
+If the next action is fry:
+
+pork_A --fry--> pork_B
+
+
+Then:
+
+CURRENT_STATE[pork] = pork_B.
+
+
+NEVER create:
+
+pork_A1
+pork_A2
+pork_A3
+
+for the ADD operations.
+
+==================================================
+3.4 MAIN MOVES TO A DIFFERENT CONTAINER
+==================================================
+
+If the current MAIN flow is transferred into a DIFFERENT cooking
+environment:
+
+CREATE A NEW container node.
+
+
+Example:
+
+current pork is associated with wok_pot
+
+then the recipe transfers it to sim_pot.
+
+
+Create:
+
+NEW sim_pot node
+
+
+Then:
+
+pork
+  \
+   add
+    \
+   sim_pot
+
+
+At this moment:
+
+CURRENT FLOW CARRIER = sim_pot
+
+
+If a PROCESS action then occurs:
+
+sim_pot
+   |
+ simmer
+   |
+   v
+NEW pork state
+
+
+After the PROCESS:
+
+CURRENT FLOW CARRIER = pork
+
+
+General pattern:
+
+MAIN
+  |
+ add
+  v
+NEW CONTAINER
+  |
+PROCESS
+  v
+NEW MAIN STATE
+
+
+==================================================
+3.5 MAIN ENTERING AN AUX-ONLY CONTAINER
+==================================================
+
+If a container currently contains only AUX ingredients:
+
+CURRENT FLOW CARRIER = container
+
+
+When MAIN is added:
+
+MAIN --add--> container
+
+
+Do NOT immediately create another container node merely because MAIN was
+added.
+
+
+The next PROCESS action creates the new output MAIN node.
+
+
+Example:
+
+oil --------\
+sugar --------> wok_pot
+                  |
+                 heat
+                  |
+                  v
+               wok_pot
+                  ^
+                  |
+                pork ADD
+                  |
+                 fry
+                  |
+                  v
+                pork
+
+
+==================================================
+3.6 INTERMEDIATE BECOMES MAIN
+==================================================
+
+A process may begin with only AUX entities and use a container as its flow
+carrier.
+
+If processing produces a meaningful intermediate classified as MAIN, that
+new MAIN state takes over the flow.
+
+
+Example:
+
+butter(aux)
+powder(aux)
+milk(aux)
+
+may initially flow through:
+
+wok_pot
+
+
+If a PROCESS action produces:
+
+white_sauce(main)
+
+then:
+
+CURRENT FLOW CARRIER = white_sauce
+
+
+Subsequent AUX additions target white_sauce rather than an empty
+container flow.
+
+
+==================================================
+3.7 FLOW-CARRIER DECISION TABLE
+==================================================
+
+CASE 1
+
+SOURCE = AUX
+CURRENT FLOW = CONTAINER
+
+Result:
+
+AUX --add--> CONTAINER
+
+NEXT FLOW = CONTAINER
+
+
+--------------------------------------------
+
+CASE 2
+
+SOURCE = AUX
+CURRENT FLOW = MAIN
+
+Result:
+
+AUX --add--> MAIN
+
+NEXT FLOW = MAIN
+
+
+--------------------------------------------
+
+CASE 3
+
+SOURCE = MAIN
+CURRENT FLOW = CONTAINER
+
+Result:
+
+MAIN --add--> CONTAINER
+
+ADD does not create a new node.
+
+The next PROCESS action creates:
+
+NEW MAIN OUTPUT NODE
+
+NEXT FLOW = MAIN
+
+
+--------------------------------------------
+
+CASE 4
+
+CURRENT MAIN moves to DIFFERENT CONTAINER
+
+Result:
+
+CREATE NEW CONTAINER
+
+MAIN --add--> NEW CONTAINER
+
+IMPORTANT:
+
+The NEW CONTAINER exists because the cooking environment changed.
+
+It does NOT exist because of the ADD action.
+
+The ADD merely connects MAIN to the already-created new environment node.
+
+NEXT FLOW = CONTAINER
+
+Then:
+
+CONTAINER --PROCESS--> NEW MAIN NODE
+
+NEXT FLOW = MAIN
+
+
+--------------------------------------------
+
+CASE 5
+
+CURRENT MAIN remains in SAME cooking environment
+
+Do NOT create another container solely because a new PROCESS action occurs.
+
+Continue from the current MAIN state.
+
+Every PROCESS action still creates a NEW MAIN output node.
+
+
+==================================================
+4. PROCESS EDGES
+==================================================
+
+A PROCESS edge represents an explicit procedural action transforming one
+procedural state into the next procedural state.
+
+
+Schema:
+
+{
+  "index": integer,
+  "action": string,
+  "type": string,
+  "node1": source_node,
+  "node2": destination_node
+}
+
+
+HARD CONSTRAINT:
+
+For every PROCESS edge:
+
+node1 != node2
+
+
+Every PROCESS action creates a new output node.
+
+
+Examples:
+
+pork_1 --cut--> pork_2
+
+pork_2 --blanch--> pork_3
+
+pork_3 --fry--> pork_4
+
+pork_4 --reduce--> pork_5
+
+
+Even if pork_4 and pork_5 have identical serialized state attributes,
+they MUST remain distinct nodes because REDUCE is an explicit PROCESS
+transition.
+
+
+==================================================
+5. ADD EDGES — ZERO-NODE RULE
+==================================================
+
+An ADD edge represents an incoming dependency.
+
+Schema:
+
+{
+  "index": integer,
+  "action": "add",
+  "type": "prep",
+  "node1": source_node,
+  "node2": existing_receiving_node
+}
+
+
+ABSOLUTE RULE:
+
+ADD creates ZERO nodes.
+
+
+The destination node MUST already exist before the ADD edge is created.
+
+
+ADD does NOT:
+
+- create a receiving-state copy;
+- advance CURRENT_STATE;
+- create a new intermediate;
+- create a new container;
+- create a new MAIN state;
+- encode procedural time by duplicating states.
+
+
+ADD only creates:
+
+SOURCE_NODE --add--> EXISTING_RECEIVER
+
+
+==================================================
+5.1 MULTIPLE ADD EDGES
+==================================================
+
+Any number of ADD edges may share the same destination.
+
+
+Example:
+
+sugar --add--> yolk_A
+milk  --add--> yolk_A
+oil   --add--> yolk_A
+
+
+All target yolk_A.
+
+
+==================================================
+5.2 ADD FOLLOWED BY PROCESS
+==================================================
+
+If ADD actions are followed by a PROCESS action:
+
+all ADD edges target the current existing state.
+
+Then the PROCESS starts from that SAME state and creates a NEW state.
+
+
+Example:
+
+flour --add--> yolk_paste_A
+
+yolk_paste_A --stir--> yolk_paste_B
+
+
+DO NOT create:
+
+flour --add--> yolk_paste_TEMP
+yolk_paste_TEMP --stir--> yolk_paste_B
+
+
+==================================================
+5.3 REPEATED ADD + PROCESS
+==================================================
+
+Recipe:
+
+add sugar
+whisk
+add sugar
+whisk
+add sugar
+whisk
+
+
+Correct graph:
+
+sugar_1 --add--> egg_white_A
+egg_white_A --whisk--> egg_white_B
+
+sugar_2 --add--> egg_white_B
+egg_white_B --whisk--> egg_white_C
+
+sugar_3 --add--> egg_white_C
+egg_white_C --whisk--> egg_white_D
+
+
+Forbidden graph:
+
+sugar_1 --add--> TEMP_1
+TEMP_1 --whisk--> egg_white_B
+
+sugar_2 --add--> TEMP_2
+TEMP_2 --whisk--> egg_white_C
+
+
+TEMP_1 and TEMP_2 are invalid because ADD cannot create nodes.
+
+
+==================================================
+5.4 MAIN-TO-MAIN ADD
+==================================================
+
+If one MAIN branch is added into another MAIN branch:
+
+SOURCE_MAIN --add--> CURRENT_RECEIVING_MAIN
+
+
+ADD creates ZERO nodes.
+
+
+Example:
+
+egg_white_paste --add--> yolk_paste
+
+Then:
+
+yolk_paste --fold--> cake_paste
+
+
+Do NOT create a new yolk_paste node between ADD and fold.
+
+
+==================================================
+5.5 ADD TO CONTAINER
+==================================================
+
+If receiver is an existing container:
+
+ingredient --add--> CURRENT_CONTAINER
+
+
+ADD creates ZERO container nodes.
+
+
+A new container may exist only because:
+
+the recipe entered a DIFFERENT cooking environment.
+
+
+The container must be created BEFORE the ADD edge is attached to it.
+
+==================================================
+5.5.1 CONTAINER PROCESS CONTINUITY CHECK
+==================================================
+
+When a PROCESS action starts from a container:
+
+CONTAINER --PROCESS--> OUTPUT
+
+the entity being processed MUST already be connected to that container
+through the current procedural flow.
+
+If the entity was outside the container immediately before the PROCESS,
+its CURRENT state MUST first enter the container using ADD.
+
+Required pattern:
+
+CURRENT_ENTITY --add--> CONTAINER
+CONTAINER --PROCESS--> NEW_STATE
+
+
+Example:
+
+potato_slice --add--> wok_pot
+wok_pot --fry--> potato_cooked
+
+
+Example:
+
+eggplant_slice --add--> wok_pot
+wok_pot --fry--> eggplant_cooked
+
+
+Example:
+
+tomato_meat_sauce --add--> sim_pot
+sim_pot --simmer--> tomato_meat_sauce_cooked
+
+
+Example:
+
+butter --add--> wok_pot_A
+wok_pot_A --heat--> wok_pot_B
+
+
+INVALID:
+
+potato_slice
+
+
+wok_pot --fry--> potato_cooked
+
+
+INVALID:
+
+tomato_meat_sauce
+
+
+sim_pot --simmer--> tomato_meat_sauce_cooked
+
+
+The container PROCESS must not start as a disconnected branch.
+
+Before creating any edge:
+
+CONTAINER --PROCESS--> OUTPUT
+
+ask:
+
+"What CURRENT entity state is being processed in this container?"
+
+If that entity is not already connected to the container through the
+existing continuous flow, create the required ADD edge:
+
+CURRENT_ENTITY --add--> CONTAINER
+
+
+IMPORTANT:
+
+This rule does NOT change ADD node semantics.
+
+ADD still creates ZERO nodes.
+
+This rule does NOT change MAIN / AUX flow-carrier behavior.
+
+It only ensures that an entity cannot be processed by a container without
+first being connected to that container.
+
+==================================================
+5.6 ADD DOES NOT REPRESENT TIME USING DUPLICATE STATES
+==================================================
+
+Repeated ADD operations may occur sequentially in the recipe text,
+but their temporal order MUST NOT be represented by generating receiving
+state copies.
+
+
+For example:
+
+add A
+add B
+add C
+
+
+may be:
+
+A --add--> S
+B --add--> S
+C --add--> S
+
+
+Do NOT generate:
+
+S1
+S2
+S3
+
+solely to encode that A, B, and C were added at different moments.
+
+
+==================================================
+6. MULTI-INGREDIENT COMBINATION
+==================================================
+
+Preserve every contributing ingredient as its own ADD dependency.
+
+Do not collapse multiple source ingredients into one artificial source.
+
+
+Example:
+
+ginger ----\
+scallion ---\
+garlic ------> current MAIN
+
+
+Each source receives its own ADD edge.
+
+
+==================================================
+7. PARALLEL BRANCHES
+==================================================
+
+Ingredients or intermediates prepared independently must remain on
+independent branches until the recipe explicitly combines them.
+
+Do NOT prematurely merge branches.
+
+All non-discarded contributing branches must eventually participate in the
+final dish.
+
+
+==================================================
+8. ASSEMBLY AND LAYERING
+==================================================
+
+Repeated layering actions are ADD dependencies.
+
+They do NOT automatically create a new assembly node.
+
+
+Example:
+
+potato
+meat_sauce
+eggplant
+meat_sauce
+potato
+white_sauce
+
+may all point to:
+
+moussaka(raw, solid)
+
+
+Then:
+
+moussaka(raw, solid)
+        |
+       bake
+        |
+        v
+moussaka(cooked, solid)
+
+
+Because BAKE is PROCESS:
+
+the output MUST be a NEW node.
+
+
+==================================================
+9. PROCESS ACTION VS ADD ACTION — MASTER RULE
+==================================================
+
+EVERY atomic action MUST first be classified as:
+
+PROCESS
+
+or:
+
+ADD
+
+
+==================================================
+PROCESS
+==================================================
+
+PROCESS:
+
+- represents an explicit procedural transition;
+- ALWAYS creates exactly ONE NEW output node;
+- updates CURRENT_STATE;
+- requires node1 != node2.
+
+
+Formal rule:
+
+S --PROCESS--> T
+
+where:
+
+T is newly created
+
+and:
+
+S != T
+
+
+Node count effect:
+
++1
+
+
+==================================================
+ADD
+==================================================
+
+ADD:
+
+- represents an incoming dependency;
+- creates ZERO nodes;
+- does NOT update CURRENT_STATE of the receiver;
+- connects a source to an already-existing receiving node;
+- may share its destination with any number of other ADD edges.
+
+
+Formal rule:
+
+X --add--> S
+
+where:
+
+S already exists before this ADD
+
+
+Node count effect:
+
+0
+
+
+==================================================
+ABSOLUTE MASTER RULE
+==================================================
+
+PROCESS = EXISTING NODE → NEW NODE
+
+ADD = SOURCE NODE → EXISTING RECEIVING NODE
+
+
+Never generate a node whose only justification is:
+
+"an ingredient was added."
+
+
+If a node exists only because an ADD occurred:
+
+DELETE THAT NODE
+
+and redirect the ADD edge to the prior current receiving state.
+
+
+==================================================
+10. CONTAINER RULES
+==================================================
+
+Allowed container values:
+
+deep_pot
+mold
+sim_pot
+wok_pot
+none
+
+
+A new container node is required when the cooking environment changes.
+
+
+Examples:
+
+wok_pot → sim_pot
+
+CREATE NEW sim_pot
+
+
+sim_pot → mold
+
+CREATE NEW mold
+
+
+wok_pot → wok_pot
+
+DO NOT create a new container merely because another action occurs.
+
+
+However:
+
+if the CURRENT FLOW CARRIER itself is a container and a PROCESS action
+occurs, the PROCESS action still produces a NEW container-state node.
+
+Example:
+
+wok_pot_A
+   |
+  heat
+   |
+   v
+wok_pot_B
+
+
+This is required because EVERY PROCESS action creates a new output node.
+
+
+==================================================
+11. PHYSICAL STATE VOCABULARY
+==================================================
+
+Allowed values:
+
+solid
+chunk
+slice
+shred
+dice
+paste
+powder
+liquid
+
+
+Never use:
+
+pieces
+small pieces
+cut
+
+
+==================================================
+12. CHEMICAL STATE
+==================================================
+
+Allowed values:
+
+raw
+cooked
+
+
+Physical state and chemical state must be reasoned independently.
+
+Heat does NOT automatically imply a physical-state change.
+
+A PROCESS node must still be created even if chemical_state remains the
+same.
+
+
+==================================================
+13. FLAVOR
+==================================================
+
+Flavor represents the entity's ORIGINAL or inherent functional flavor.
+
+Allowed values:
+
+aroma
+aromatic
+deodorizing
+none
+salty
+savory
+sour
+spicied
+spicy
+sweet
+umami
+
+
+Flavor MUST be a single string.
+
+Never use arrays.
+
+Do NOT dynamically accumulate flavor.
+
+Do NOT propagate source flavor into receiving entities.
+
+
+==================================================
+14. INVALID DUPLICATE NODE REMOVAL
+==================================================
+
+Do NOT perform general state-attribute-based consolidation.
+
+Two nodes with identical serialized attributes may still be different
+procedural states if a PROCESS action separates them.
+
+
+Therefore:
+
+if:
+
+A --PROCESS--> B
+
+A and B MUST remain distinct,
+
+even if every serialized attribute is identical.
+
+
+Only remove nodes that are artificial duplicates created without a valid
+PROCESS transition.
+
+
+Typical invalid duplicates include nodes created solely because of:
+
+- ADD;
+- repeated layering;
+- repeated references;
+- accidental re-instantiation of the current state.
+
+
+For every non-start, non-container-introduction node ask:
+
+"Which PROCESS action created this node?"
+
+
+If no PROCESS action created it, and it is not an explicitly introduced
+new cooking environment:
+
+the node is INVALID.
+
+
+Example:
+
+yolk_A exists.
+
+sugar is added.
+
+If a new yolk_B was created only because of ADD:
+
+yolk_B is invalid.
+
+
+Correct:
+
+sugar --add--> yolk_A
+
+
+If stir then occurs:
+
+yolk_A --stir--> yolk_C
+
+
+yolk_C is valid because PROCESS created it.
+
+
+==================================================
+15. SELF-LOOP VALIDATION — HARD CONSTRAINT
+==================================================
+
+Before outputting JSON, inspect every edge.
+
+
+For every PROCESS edge verify:
+
+node1 != node2
+
+
+The following is INVALID:
+
+{
+  "action": "reduce",
+  "node1": 26,
+  "node2": 26
+}
+
+
+Correct form:
+
+{
+  "action": "reduce",
+  "node1": 26,
+  "node2": 27
+}
+
+
+If a PROCESS action exists, create a new output node.
+
+
+NO PROCESS SELF-LOOPS ARE ALLOWED.
+
+
+==================================================
+16. PREVIOUS = PROVENANCE
+==================================================
+
+Construct "previous" ONLY AFTER:
+
+- all nodes are finalized;
+- all edges are finalized;
+- all node indices are finalized;
+- all edge indices are finalized.
+
+
+Do NOT assign provisional previous.edge_index values during earlier
+reasoning.
+
+
+==================================================
+16.1 PREVIOUS–EDGE CONSISTENCY — HARD CONSTRAINT
+==================================================
+
+For every previous entry:
+
+{
+  "edge_index": E,
+  "action": A,
+  "type": T,
+  "source_ingredient": S
+}
+
+
+there MUST exist exactly one edge:
+
+{
+  "index": E,
+  "action": A,
+  "type": T,
+  ...
+}
+
+
+Verify:
+
+previous.edge_index == edge.index
+
+previous.action == edge.action
+
+previous.type == edge.type
+
+
+Never output stale or mismatched edge indices.
+
+
+==================================================
+17. GRAPH VALIDATION — MANDATORY
+==================================================
+
+Before serialization verify ALL of the following:
+
+
+1. Every PROCESS action creates exactly ONE new output node.
+
+2. Every PROCESS edge satisfies:
+
+   node1 != node2
+
+3. Every ADD action creates ZERO nodes.
+
+4. Every ADD destination existed before the ADD edge was created.
+
+5. No node exists solely because an ADD action occurred.
+
+6. Multiple ADD edges may share the same destination.
+
+7. ADD does NOT update the receiving CURRENT_STATE.
+
+8. If:
+
+   X --add--> S
+
+   and the next action on that branch is PROCESS P,
+
+   then the PROCESS must begin from S:
+
+   S --P--> NEW_STATE
+
+   unless another PROCESS transition explicitly occurs first.
+
+9. MAIN / AUX roles were assigned during text analysis.
+
+10. If only AUX exists in a cooking context:
+
+    CURRENT FLOW CARRIER = container.
+
+11. When MAIN enters a container:
+
+    MAIN --add--> CURRENT CONTAINER
+
+    ADD creates no new node.
+
+12. The next PROCESS may create a new MAIN state.
+
+13. Once MAIN is the flow carrier:
+
+    later AUX ingredients target the current MAIN state.
+
+14. If the cooking environment changes:
+
+    create a NEW container node BEFORE attaching ADD edges to it.
+
+15. Container creation is justified by environment change,
+    NOT by ADD.
+
+16. Different container categories are never merged.
+
+17. Same cooking environment is not recreated merely because another
+    ADD occurs.
+
+18. Every explicit PROCESS action remains represented.
+
+19. Source and destination of a PROCESS transition are never merged.
+
+20. No artificial assembly nodes are created solely for sequential ADD
+    operations.
+
+21. Every non-discarded contributing branch reaches the finished dish.
+
+22. No unintended contributing branch is disconnected.
+
+23. For every container-origin PROCESS edge:
+
+    CONTAINER --PROCESS--> OUTPUT
+
+    verify that the entity being processed is already connected to that
+    container through the current procedural flow.
+
+24. If the processed entity was outside the container immediately before
+    the PROCESS, the graph must contain:
+
+    CURRENT_ENTITY --add--> CONTAINER
+
+    before:
+
+    CONTAINER --PROCESS--> OUTPUT
+
+    A container-origin PROCESS must never begin as a disconnected branch.
+
+25. Every node referenced by an edge actually exists.
+
+26. Every edge index is unique.
+
+27. Node indices are unique.
+
+28. Node indices are sequential after final renumbering.
+
+29. Edge indices are sequential after final renumbering.
+
+30. Every previous.edge_index refers to an existing finalized edge.
+
+31. previous.action exactly matches the referenced edge action.
+
+32. previous.type exactly matches the referenced edge type.
+
+33. flavor is exactly one allowed STRING.
+
+34. flavor is NEVER an array.
+
+35. physical_state uses only:
+
+    solid
+    chunk
+    slice
+    shred
+    dice
+    paste
+    powder
+    liquid
+
+36. NEVER use:
+
+    pieces
+    small pieces
+    cut
+
+    as physical_state.
+
+37. Final node represents the completed dish.
+
+
+==================================================
+18. FINAL INTERNAL PROCEDURE
+==================================================
+
+Follow this order internally:
+
+1. Split original recipe into atomic text actions.
+
+1.5 Verify atomic-step fidelity to the source text.
+
+    Atomic steps must represent source-text actions,
+
+    NOT graph topology.
+
+    Do not introduce ENTITY → add → CONTAINER solely because the later
+
+    graph requires that connection.
+
+    Keep the acted-on entity as the atomic-step entity and record the
+
+    container only as receiving_entity / cooking environment.
+
+2. Normalize actions and entity names.
+
+3. Assign MAIN / AUX roles during the text stage.
+
+4. Resolve pronouns and entity continuity.
+
+5. Reconstruct input and output state attributes.
+
+6. Determine cooking environment for heat actions.
+
+7. Detect whether the cooking environment stays the same or changes.
+
+8. Track:
+
+   CURRENT_STATE
+
+   ACTIVE_CONTAINER
+
+   CURRENT_FLOW_CARRIER
+
+9. Classify every action as:
+
+   PROCESS
+
+   or
+
+   ADD.
+
+10. For PROCESS:
+
+    ALWAYS create a NEW output node.
+
+11. For ADD:
+
+    create ZERO nodes.
+
+    connect the source directly to the already-existing
+    CURRENT receiving node.
+
+    DO NOT update CURRENT_STATE.
+
+    DO NOT create a receiving-state copy.
+
+11.5 Before every container-origin PROCESS:
+
+     identify the CURRENT state of the entity being processed.
+
+     If that state is not already connected to the container,
+     add:
+
+     CURRENT_ENTITY --add--> CONTAINER
+
+     Then create:
+
+     CONTAINER --PROCESS--> NEW_STATE
+
+12. Apply the Flow Carrier Rule:
+
+    AUX-only → container
+
+    MAIN enters → next PROCESS outputs MAIN
+
+    AUX after MAIN → MAIN remains carrier
+
+    MAIN changes container → new container
+
+13. Preserve parallel branches.
+
+14. Merge branches only when the recipe actually combines them.
+
+15. Avoid fake assembly states created only by repeated ADD actions.
+
+16. Never create a PROCESS self-loop.
+
+17. Never consolidate the two sides of a PROCESS transition.
+
+18. Ensure all contributing branches reach the final dish.
+
+19. Finalize nodes.
+
+19.5 Inspect every non-start node.
+
+For each node determine its creation reason.
+
+It must be one of:
+
+- output of a PROCESS action;
+- explicitly introduced new cooking environment;
+- legitimate initial ingredient/entity state.
+
+If its only creation reason is ADD:
+
+remove it.
+
+20. Finalize edges.
+
+21. Assign node indices.
+
+22. Assign edge indices.
+
+23. Derive previous from the finalized graph.
+
+24. Validate previous against edges.
+
+25. Serialize JSON.
+
+
+==================================================
+19. MOST IMPORTANT PRINCIPLES
+==================================================
+
+MAIN / AUX is assigned during TEXT analysis.
+
+Every action is classified as either PROCESS or ADD.
+
+
+PROCESS:
+
+- ALWAYS creates exactly ONE NEW output node;
+- ALWAYS advances procedural state;
+- ALWAYS updates CURRENT_STATE;
+- ALWAYS satisfies node1 != node2.
+
+
+ADD:
+
+- creates ZERO nodes;
+- NEVER creates a receiving-state copy;
+- NEVER updates CURRENT_STATE;
+- connects a source directly to an EXISTING current receiving node;
+- multiple ADD edges may share one destination.
+
+
+MASTER RULE:
+
+PROCESS = EXISTING STATE → NEW STATE
+
+ADD = SOURCE → EXISTING CURRENT RECEIVER
+
+
+If:
+
+CURRENT_STATE = S
+
+and:
+
+X --add--> S
+
+then after ADD:
+
+CURRENT_STATE is STILL S.
+
+
+If the next action is PROCESS:
+
+S --PROCESS--> T
+
+then:
+
+T is NEW
+
+and:
+
+CURRENT_STATE becomes T.
+
+
+AUX-only cooking flow is carried by CONTAINER.
+
+Once MAIN enters a container and a PROCESS produces a MAIN state,
+MAIN becomes the downstream flow carrier.
+
+Later AUX ingredients target the current MAIN state.
+
+Changing cooking environment creates a NEW container.
+
+ADD itself NEVER creates a container.
+
+wok_pot and sim_pot are different cooking environments.
+
+Repeated ADD or layering operations NEVER justify new receiving states.
+
+Never create a node solely to show that an ingredient was added.
+
+Every PROCESS action must remain explicit.
+
+Never use PROCESS self-loops.
+
+Never merge the two sides of an explicit PROCESS transition.
+
+Build topology first.
+
+Finalize all node and edge indices.
+
+Generate previous only after edge indices are final.
+
+Validate all previous references before serialization.
