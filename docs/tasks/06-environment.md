@@ -23,3 +23,9 @@ AGENTS.md 是新任务的项目规则入口；普通 md 需要明确要求读取
 - Restart Vite after this configuration change. The backend does not need a
   restart when it is already running on port 8000.
 
+
+## 2026-10-18 网页“反复崩溃”排查
+- 现象：用户反馈网页持续崩溃。在内置浏览器里用 React/Vite 前端（5500）逐项检查：默认对比、25/24、24/25、12/15、5/1 都能加载，40 个节点和 40 条边的连续点击没有控制台错误；没有复现前端渲染崩溃。
+- 发现：后端（uvicorn --reload，8000）的进程号在测试期间从 2184 变成 39944，期间 /recipes 一度连续超时或拒绝连接，随后恢复；这台机器上 Python 和 Node 本身也会随机 segfault（重试即可）。所以更像是后端 worker 被 reload 或崩溃后重启，期间请求被丢弃，页面就报错。没有拿到后端终端的 traceback，不能确认具体原因。
+- 已执行：`frontend/src/api.js` 新增 `fetchWithRetry`：连接失败或 502/503/504 时最多重试 4 次（间隔 600ms 递增）；404 等真实错误和已取消的请求不重试。`api.test.js` 3 项；vitest 12 个文件 54 项通过。
+- 未做：没有修 segfault 的根因；没有全量 /compare 压测（测试循环本身曾把单 worker 后端压到无响应，已停止）。
