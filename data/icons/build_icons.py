@@ -20,6 +20,7 @@ import json
 import math
 import shutil
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -131,12 +132,20 @@ def main(argv=None):
     for number, label in enumerate(todo, start=1):
         slug = generate_icons_svg.icon_slug(label)
         best = images / f"{slug}.png"
-        if not best.exists():
-            print(f"[{number}/{len(todo)}] {label}")
+        started = time.time()
+        if best.exists():
+            note = "reused finished image"
+        else:
+            print(f"[{number}/{len(todo)}] {label} ...", flush=True)
             generate_icons_svg.generate_icon(cache[label], images, args.size, args.candidates)
+            note = f"generated in {time.time() - started:.0f}s"
         target = ICON_DIR / f"{slug}.png"
         if args.overwrite or not target.exists():
             shutil.copyfile(best, target)
+            note += f", saved {target.name}"
+        else:
+            note += f", kept existing {target.name}"
+        print(f"[{number}/{len(todo)}] {label} done: {note}", flush=True)
     print(f"[OK] installed {len(todo)} icons into {ICON_DIR}")
     return 0
 
