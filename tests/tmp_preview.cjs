@@ -1,0 +1,10 @@
+const {chromium}=require('C:/Users/yang2767/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage({viewport:{width:1600,height:900}});await page.goto('http://127.0.0.1:3000');await page.waitForTimeout(1500);const options=await page.locator('#recipe1 option').evaluateAll(ns=>ns.map(n=>n.value));
+await page.selectOption('#recipe1',options.find(v=>v.startsWith('14 ')));
+await page.selectOption('#recipe2',options.find(v=>v.startsWith('15 ')));
+await page.getByRole('button',{name:'Compare',exact:true}).click();
+await page.waitForTimeout(2200);
+await page.evaluate(()=>{const b=root.node().getBBox(),k=Math.min(0.85,1500/b.width,800/b.height);root.attr('transform',`translate(${40-b.x*k},${35-b.y*k}) scale(${k})`);});
+await page.screenshot({path:'tests/tmp_split_preview.png',fullPage:true});
+console.log('Rendered 14 / 15',await page.locator('svg .node').count());
+await browser.close();})().catch(e=>{console.error(e);process.exitCode=1});

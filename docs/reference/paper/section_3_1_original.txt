@@ -1,0 +1,130 @@
+3.1 Comparison-Oriented Representation Framework
+Prior work has shown that recipes can be represented as structured pro￾cedural knowledge rather than as flat linear text. Existing state-based,
+graph-based, and program-like models capture ingredients, actions,
+intermediate products, dependencies, and process ordering in recipe
+procedures [28, 30, 36]. Building on these foundations, we represent
+each recipe as a comparison-oriented state–action process graph, in
+which states denote ingredient, intermediate, or cooking-environment
+conditions, and actions denote operations that transform, combine, or
+relocate them. This representation provides the foundation for our
+comparison framework and visualization.
+3.1.1 State-Action Modeling
+Based on prior work, we model each recipe as a state–action process
+graph. This representation externalizes causal structure, intermediate
+results, and state transitions that are only implicit in recipe text, sup￾porting both recipe understanding and cross-recipe comparison. As
+shown in Fig. 2, nodes represent states and links represent actions. A
+state denotes the condition of an ingredient, intermediate food entity,
+or cooking environment at a particular stage of the recipe. An action
+denotes an operation that transforms a state, combines multiple states,
+or moves a state into a new cooking context. We instantiate a new state
+whenever an action introduces a change that is semantically relevant to
+subsequent steps.
+State attributes. Each state is described by the following at￾tributes:
+1. container, the associated cooking environment, such as none,
+wok, pan, or pot;
+2. name, the ingredient or intermediate identity;
+3. type, the component role, defined as main, auxiliary, or con￾tainer;
+4. physical_state, the physical form of the entity, categorized as
+liquid, paste, solid, powder, or small pieces;
+5. chemical_state, a coarse-grained transformation status, encoded
+as raw or cooked to support stable comparison across recipe
+variants;
+6. flavor, the accumulated flavor characteristics inherited from added
+ingredients, seasonings, and prior transformations; and
+7. provenance, the set of incoming source-state/action pairs that
+structurally derive the current state.
+Transition attributes. Each transition represents an action that
+maps one or more input states to an output state in the recipe graph. A
+transition contains:
+1. action, the operation applied in the step;
+2. type, the broader process category, defined as prep, hot process,
+or cold process;
+3. inputs, the input state or set of input states;
+4. outputs, the resulting state or set of output states.
+To illustrate the representation, consider the red-braised pork belly
+recipe in Fig. 2. The instruction “cut the pork belly into evenly sized
+cubes” is encoded as a transition from MEAT (raw, whole) to MEAT
+(raw, cube) via cut, changing physical_state while preserving chemi￾cal_state. The instruction “put the pork into a pot of cold water and
+blanch” moves the meat into a pot context and produces a new blanched
+meat state, updating both container and chemical_state. In a parallel
+branch, “heat oil in a wok and add rock sugar” establishes a wok￾centered cooking context. When the blanched meat later enters this
+branch and is fried, the result is represented as a new intermediate state
+whose provenance records the convergence of multiple prior states and
+actions.
+3.1.2 State Transition Mechanisms
+More specifically, we group action-induced state transitions into two
+structural types: (1) single-ingredient processing and (2) multi￾ingredient combination. In single-ingredient processing, a state
+changes while remaining tied to one ingredient throughout the pro￾cess (Fig. 2a). In multi-ingredient combination, separately processed
+ingredient states are brought together to form a new intermediate state
+that continues as a subsequent process unit (Fig. 2b). Together, these
+two types produce a multi-branch process structure in which ingredient
+states may evolve independently before later converging.
+Across both types, transitions may occur through either physical
+transitions or heat-mediated transitions. Physical transitions take
+place without a heated cooking environment, whereas heat-mediated
+transitions occur within a cooking environment such as a wok, pan, or
+pot (Fig. 2c).
+We distinguish physical combination from heat-mediated cooking
+because their semantics differ. In physical combination, the mixing
+order is often less important, and the container is usually not central
+to the resulting state. For example, when flour and water are mixed
+into dough, the key result is the combined state rather than the vessel
+used. In heat-mediated cooking, however, both the order of ingredient
+introduction and the site of interaction can substantially affect the
+intermediate and final outcomes. This distinction motivates our explicit
+representation of the cooking environment as a separate node, which
+captures both the container and the sequence in which ingredients enter
+it.
+Finally, we distinguish ingredient states by functional role: main
+ingredient states and auxiliary ingredient states (Fig. 2d). Main
+ingredient states define the dish’s primary identity and transformation
+path, whereas auxiliary ingredient states contribute aroma, seasoning,
+flavor balance, or other supporting functions. This distinction helps
+clarify the hierarchical organization of recipe components and the roles
+different branches play in the overall process.
+3.1.3 Comparison-Oriented Structural
+Building on the state and transition attributes defined above, recipe
+comparison is formulated as the alignment of similar process elements
+across two recipe graphs. At a high level, this involves identifying corre￾spondences between states, actions, and their local transition structures.
+Since states summarize ingredient identity, intermediate condition, and
+process stage, they serve as the primary anchors for alignment; actions
+are then evaluated based on whether they connect matched or compat￾ible states in comparable ways. The comparison procedure proceeds
+in two stages. We first identify candidate state correspondences across
+the two graphs by comparing state attributes; we then examine the
+transitions connecting matched states to determine whether the linked
+operations express comparable process semantics. The effective seman￾tic unit of comparison is thus the local state–action transition pattern
+rather than isolated nodes or edges.
+Matching rules. We define state matching as a semantic corre￾spondence jointly determined by five attributes: provenance, name,
+type, chemical_state, and physical_state. Among them, name and
+type provide the essential identity of a state, while chemical_state and
+physical_state describe its current condition, and provenance captures
+its incoming structural provenance.
+Based on these attributes, we distinguish three forms of state corre￾spondence:
+(1) Exact. Two states are considered exact when all five attributes
+are identical. This indicates that they represent the same ingredient role
+and condition under the same incoming structural history.
+Fig. 2: Example of decomposing recipe text into a state-action process graph. The left panel shows the original red-braised pork recipe, and the right
+panel shows the corresponding structured representation of ingredient states, cooking-environment states, and action-driven transitions across steps.
+(2) Similar. Two states are considered similar when they share the
+same name and type, but do not satisfy exact correspondence. This
+indicates that they remain semantically aligned in ingredient identity
+and role, while differing in condition or provenance.
+Because multiple candidate pairs may satisfy the similar condition
+for the same state, similarity alone is not sufficient to determine which
+pair should be aligned first. To ensure that each state is matched
+with the most semantically appropriate counterpart, we introduce a
+priority-based matching strategy. The priority is determined by the
+relative importance of the remaining matched attributes, ordered as
+chemical_state = physical_state > provenance. Thus, among state
+pairs that already agree in name and type, those that preserve more
+condition and provenance information are preferred. In particular, a
+pair receives higher priority when its provenance attributes, although
+not globally identical, still preserve the same most recent incoming
+source–action relation. During alignment, higher-priority similar pairs
+are assigned first, and lower-priority pairs are considered only after
+stronger correspondences have been exhausted.
+(3) Different. If either name or type does not match, the two states
+are treated as different.
+After state correspondence is established according to this priority
+order, we further compare the actions connecting the aligned state pairs
+to determine whether the correspondin
