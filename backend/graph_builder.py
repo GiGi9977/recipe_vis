@@ -9,6 +9,7 @@ from .matcher import (
     build_node_map,
     build_branch_metadata,
     branch_contexts_compatible,
+    branch_pairing,
     state_key,
     compare_non_main_nodes,
     is_main_like
@@ -144,8 +145,16 @@ def build_merged_nodes_from_records(
         start_nodes1 = [n for n in find_main_start_nodes(recipe1) if n not in recorded1]
         start_nodes2 = [n for n in find_main_start_nodes(recipe2) if n not in recorded2]
 
-        labels1, origins1, branches1 = build_branch_metadata(recipe1)
-        labels2, origins2, branches2 = build_branch_metadata(recipe2)
+        from . import matcher as _matcher
+        if _matcher.USE_BRANCH_PAIRING:
+            branch_pairs, branch_of1, branch_of2 = branch_pairing(recipe1, recipe2)
+        else:
+            labels1, origins1, branches1 = build_branch_metadata(recipe1)
+            labels2, origins2, branches2 = build_branch_metadata(recipe2)
+            # Branches that share a main (tiers 1-2, names unique per recipe)
+            # may also merge their start nodes, as in the matcher's branch_allow.
+            allow_pairs, allow_of1, allow_of2 = _matcher.branch_pairing(
+                recipe1, recipe2, tiers=(1, 2), unique_only=True)
         used_start2 = set()
 
         for s1 in start_nodes1:
@@ -156,10 +165,15 @@ def build_merged_nodes_from_records(
                 if s2 in used_start2:
                     continue
                 n2 = nmap2[s2]
-                if (branch_contexts_compatible(
+                if _matcher.USE_BRANCH_PAIRING:
+                    compatible = (branch_of1.get(s1), branch_of2.get(s2)) in branch_pairs
+                else:
+                    compatible = branch_contexts_compatible(
                         labels1.get(s1), origins1[s1], branches1,
                         labels2.get(s2), origins2[s2], branches2)
-                        and state_key(n1) == state_key(n2)):
+                    if not compatible and allow_of1.get(s1) is not None:
+                        compatible = (allow_of1.get(s1), allow_of2.get(s2)) in allow_pairs
+                if compatible and state_key(n1) == state_key(n2):
                     best_s2 = s2
                     break
 
@@ -327,6 +341,43 @@ def build_aux_merged_nodes_from_records(aux_records, recipe1_aux, recipe2_aux):
                     merged_id=mid,
                     domain="aux",
                     kind="merged_exact",
+                    r1_node=rec.r1_out_node,
+                    r2_node=rec.r2_out_node,
+                    state_r1=state_key(n1),
+                    state_r2=state_key(n2),
+                    flavor_r1=n1.get("flavor"),
+                    flavor_r2=n2.get("flavor"),
+                    container_r1=n1.get("container"),
+                    container_r2=n2.get("container"),
+                )
+            )
+
+        elif rec.kind == "similar":
+            n1 = nmap1[rec.r1_out_node]
+            n2 = nmap2[rec.r2_out_node]
+
+            # Same ingredient with a different state. When it receives additions in
+            # the next step (a prepared aux such as sauce water that takes different
+            # seasonings per recipe) it is one shared step: a shared (exact-colored)
+            # node that the dumbbell rules split into R1/R2 halves, each keeping its
+            # own state. Without such additions the state difference is the whole
+            # story, so it stays merged_similar like a main node would.
+            def takes_additions(recipe, idx):
+                return any(
+                    int(e["node2"]) == int(idx)
+                    and (canon_action(e.get("action", "")) == "add"
+                         or str(e.get("type", "")).lower().strip() == "add")
+                    for e in recipe["edges"]
+                )
+
+            activated = (takes_additions(recipe1_aux, rec.r1_out_node)
+                         or takes_additions(recipe2_aux, rec.r2_out_node))
+
+            merged_nodes.append(
+                MergedNode(
+                    merged_id=mid,
+                    domain="aux",
+                    kind="merged_exact" if activated else "merged_similar",
                     r1_node=rec.r1_out_node,
                     r2_node=rec.r2_out_node,
                     state_r1=state_key(n1),
@@ -618,11 +669,42 @@ def canon_action(a: str) -> str:
     return str(a).lower().strip()
 
 
+def norm_duration(edge: Dict[str, Any]) -> str:
+    return str(edge.get("duration", "")).strip().lower()
+
+
+def durations_compatible(e1: Dict[str, Any], e2: Dict[str, Any]) -> bool:
+    duration1 = norm_duration(e1)
+    duration2 = norm_duration(e2)
+    return not duration1 or not duration2 or duration1 == duration2
+
+
+def resolved_duration(*edges: Dict[str, Any]) -> Optional[str]:
+    """Use the explicit duration when a compatible edge omits it."""
+    for edge in edges:
+        value = edge.get("duration")
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return None
+
+
+def resolved_heat_level(*edges: Dict[str, Any]):
+    """First stated heat_level (a level string or an object of shares), else None."""
+    for edge in edges:
+        value = edge.get("heat_level")
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower()
+        if isinstance(value, dict) and value:
+            return dict(value)
+    return None
+
+
 def same_action(e1, e2):
     return (
         canon_action(e1["action"]) == canon_action(e2["action"])
         and str(e1.get("type", "")).lower().strip()
         == str(e2.get("type", "")).lower().strip()
+        and durations_compatible(e1, e2)
     )
 
 
@@ -970,16 +1052,19 @@ def build_render_edges(
 
     render_edges = []
 
-    def add_edge(frm_mid, frm_a, to_mid, to_a, action, typ, style):
-        render_edges.append(
-            {
-                "from": (frm_mid, frm_a),
-                "to": (to_mid, to_a),
-                "action": canon_action(action),
-                "type": str(typ).lower().strip(),
-                "style": style,
-            }
-        )
+    def add_edge(frm_mid, frm_a, to_mid, to_a, action, typ, style, duration=None, heat_level=None):
+        rendered = {
+            "from": (frm_mid, frm_a),
+            "to": (to_mid, to_a),
+            "action": canon_action(action),
+            "type": str(typ).lower().strip(),
+            "style": style,
+        }
+        if duration is not None and str(duration).strip():
+            rendered["duration"] = str(duration).strip()
+        if heat_level:
+            rendered["heat_level"] = heat_level
+        render_edges.append(rendered)
 
     def resolve_target(recipe_id, node_idx):
         key = (recipe_id, int(node_idx))
@@ -1038,6 +1123,8 @@ def build_render_edges(
                     e1["action"],
                     e1.get("type", ""),
                     "R1",
+                    resolved_duration(e1),
+                    resolved_heat_level(e1),
                 )
             continue
 
@@ -1062,6 +1149,8 @@ def build_render_edges(
                     e2["action"],
                     e2.get("type", ""),
                     "R2",
+                    resolved_duration(e2),
+                    resolved_heat_level(e2),
                 )
             continue
 
@@ -1107,6 +1196,8 @@ def build_render_edges(
                         e1["action"],
                         e1.get("type", ""),
                         "shared",
+                        resolved_duration(e1, e2),
+                        resolved_heat_level(e1, e2),
                     )
                     break
 
@@ -1119,6 +1210,8 @@ def build_render_edges(
                     e1["action"],
                     e1.get("type", ""),
                     "R1",
+                    resolved_duration(e1),
+                    resolved_heat_level(e1),
                 )
 
         for j, e2 in enumerate(e2_list):
@@ -1143,6 +1236,8 @@ def build_render_edges(
                 e2["action"],
                 e2.get("type", ""),
                 "R2",
+                resolved_duration(e2),
+                resolved_heat_level(e2),
             )
 
     print("\n====== MAIN RENDER EDGES ======")
@@ -1187,14 +1282,19 @@ def build_aux_render_edges(
 
     render_edges = []
 
-    def add_edge(frm_mid, frm_a, to_mid, to_a, action, typ, style):
-        render_edges.append({
+    def add_edge(frm_mid, frm_a, to_mid, to_a, action, typ, style, duration=None, heat_level=None):
+        rendered = {
             "from": (frm_mid, frm_a),
             "to": (to_mid, to_a),
             "action": canon_action(action),
             "type": str(typ).lower().strip(),
             "style": style
-        })
+        }
+        if duration is not None and str(duration).strip():
+            rendered["duration"] = str(duration).strip()
+        if heat_level:
+            rendered["heat_level"] = heat_level
+        render_edges.append(rendered)
 
     def resolve_target(recipe_id, node_idx):
         """
@@ -1272,7 +1372,9 @@ def build_aux_render_edges(
                     target_anchor(dom1, target1, kind1, False, recipe1_id),
                     e1["action"],
                     e1.get("type", ""),
-                    "R1"
+                    "R1",
+                    resolved_duration(e1),
+                    resolved_heat_level(e1),
                 )
             continue
 
@@ -1296,7 +1398,9 @@ def build_aux_render_edges(
                     target_anchor(dom2, target2, kind2, False, recipe2_id),
                     e2["action"],
                     e2.get("type", ""),
-                    "R2"
+                    "R2",
+                    resolved_duration(e2),
+                    resolved_heat_level(e2),
                 )
             continue
 
@@ -1329,7 +1433,7 @@ def build_aux_render_edges(
                     and dom1 == dom2
                     and target1 == target2
                     and (
-                        (dom1 == "aux" and kind1 == "merged_exact" and kind2 == "merged_exact")
+                        (dom1 == "aux" and kind1 in ("merged_exact", "merged_similar") and kind2 in ("merged_exact", "merged_similar"))
                         or
                         (dom1 == "other" and kind1 in ("merged_exact", "merged_similar") and kind2 in ("merged_exact", "merged_similar"))
                     )
@@ -1346,7 +1450,9 @@ def build_aux_render_edges(
                         target_anchor(dom1, target1, kind1, True, recipe1_id),
                         e1["action"],
                         e1.get("type", ""),
-                        "shared"
+                        "shared",
+                        resolved_duration(e1, e2),
+                        resolved_heat_level(e1, e2),
                     )
                     break
 
@@ -1358,7 +1464,9 @@ def build_aux_render_edges(
                     target_anchor(dom1, target1, kind1, False, recipe1_id),
                     e1["action"],
                     e1.get("type", ""),
-                    "R1"
+                    "R1",
+                    resolved_duration(e1),
+                    resolved_heat_level(e1),
                 )
 
         for j, e2 in enumerate(e2_list):
@@ -1382,7 +1490,9 @@ def build_aux_render_edges(
                 target_anchor(dom2, target2, kind2, False, recipe2_id),
                 e2["action"],
                 e2.get("type", ""),
-                "R2"
+                "R2",
+                resolved_duration(e2),
+                resolved_heat_level(e2),
             )
 
     print("\n====== AUX RENDER EDGES ======")
@@ -1428,6 +1538,12 @@ def export_graph_data(nodes, edges, recipe1_id=None, recipe2_id=None, separate_l
                 "action": e["action"],
                 "type": e["type"],
                 "style": e["style"],
+                **(
+                    {"duration": e["duration"]}
+                    if e.get("duration") is not None and str(e["duration"]).strip()
+                    else {}
+                ),
+                **({"heat_level": e["heat_level"]} if e.get("heat_level") else {}),
             }
             for e in edges
         ],

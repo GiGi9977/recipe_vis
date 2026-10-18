@@ -1,7 +1,16 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Any, List, Tuple, Optional
-from collections import defaultdict, deque
+import os
+from collections import Counter, defaultdict, deque
+
+# Experimental two-stage matching: split each recipe into branches (labelled by all
+# of their main nodes), pair the branches one-to-one (identical main sets, then a
+# shared main, then a shared aux) and let nodes merge only inside paired branches.
+# Off by default: it conflicts with validated cases where the two recipes segment
+# the same food differently (docs/tasks/01-matching.md). Set the environment
+# variable RECIPE_BRANCH_PAIRING=1 before starting the backend to try it.
+USE_BRANCH_PAIRING = os.environ.get("RECIPE_BRANCH_PAIRING", "0") == "1"
 
 ACTION_CANON = {
     "parboil": "blanch",
@@ -183,10 +192,14 @@ class SeqItem:
     key1: Tuple
     key2: Tuple
     state_out: Tuple
+    target_add_inputs: Tuple = ()
     branch_label: Optional[str] = ""
     branch_origins: frozenset = frozenset()
     recipe_branches: frozenset = frozenset()
     product_branch: Optional[str] = None
+    vessel_mains: frozenset = frozenset()
+    vessel_aux: frozenset = frozenset()
+    branch_id: Optional[int] = None
 
 
 @dataclass
@@ -442,6 +455,52 @@ def find_prev_main_transition(target_idx: int, node_map, in_map):
 
     return None, None, None
 
+def vessel_chain_ingredients(recipe, node_map, start):
+    """Main and aux ingredients along the process chain that starts at a vessel.
+
+    The chain follows process edges only (an add edge moves food into another
+    vessel and ends the chain) and stops at the first main product. The main
+    ingredients are the chain's products plus the single main added into it (if
+    several mains are combined, only the products; with no product, the added
+    mains); aux ingredients are the aux additions into it.
+    """
+    def is_add(edge):
+        return canon_action(edge.get("action", "")) == "add" or norm_str(edge.get("type", "")) == "add"
+
+    chain, products, pending = set(), set(), deque([start])
+    while pending:
+        current = pending.popleft()
+        if current in chain:
+            continue
+        chain.add(current)
+        if current != start and norm_str(node_map[current].get("type")) == "main":
+            products.add(norm_str(node_map[current].get("name", "")))
+            continue
+        for edge in recipe["edges"]:
+            if int(edge["node1"]) == current and not is_add(edge):
+                pending.append(int(edge["node2"]))
+    added_mains, auxes = set(), set()
+    for edge in recipe["edges"]:
+        if int(edge["node2"]) in chain and is_add(edge):
+            source = node_map[int(edge["node1"])]
+            kind = norm_str(source.get("type"))
+            if kind == "main":
+                added_mains.add(norm_str(source.get("name", "")))
+            elif kind == "aux":
+                auxes.add(norm_str(source.get("name", "")))
+    # The branch is identified by what it produces plus the one main it transforms.
+    # When a single main is added (cake paste baked into a cake, pork fried into
+    # pork) that main is the branch's own entity. When several mains are combined
+    # (eggplant, meat sauce and white sauce layered into an assembly dish) the
+    # product is a new entity and the added mains belong to other branches, so
+    # they do not make the vessels correspond. With no product, the added mains
+    # stand in.
+    mains = set(products)
+    if len(added_mains) == 1 or not products:
+        mains |= added_mains
+    return frozenset(mains), frozenset(auxes)
+
+
 def build_branch_metadata(recipe):
     """Track semantic labels and the initial main/container branches consumed.
 
@@ -507,24 +566,59 @@ def build_branch_metadata(recipe):
     # main product, so later assembly cannot relabel all pans as the final dish.
     # These tokens remain in provenance after joining a food branch: shared
     # pan preparation still distinguishes pre-join from post-join stages.
-    root_keys = dict(root_names)
+    # Every root owns a set of identity keys; two branches correspond when their
+    # key sets intersect. A container's keys come from what its own process chain
+    # contains: each main ingredient along the chain is a key, so two branches
+    # need at least one shared main ingredient. Only when the chain has no main
+    # ingredient at all do its aux additions become the keys (shared aux).
+    root_keys = {root: frozenset({name}) for root, name in root_names.items()}
     for root in root_names:
         if norm_str(node_map[root].get("type")) != "container":
             continue
-        pending, seen, products = deque([root]), set(), set()
-        while pending:
-            current = pending.popleft()
-            if current in seen:
-                continue
-            seen.add(current)
-            if current != root and norm_str(node_map[current].get("type")) == "main":
-                products.add(norm_str(node_map[current].get("name", "")))
-                continue
-            pending.extend(outgoing.get(current, []))
-        # With no observable food product, a pot has no reliable counterpart.
-        # Keep the token recipe-local rather than matching on its vessel name.
-        role = tuple(sorted(products)) if products else ("unresolved", id(recipe), root)
-        root_keys[root] = ("container", root_names[root], role)
+        mains, auxes = vessel_chain_ingredients(recipe, node_map, root)
+        if mains:
+            role_keys = {("main", name) for name in mains}
+        elif auxes:
+            # No main ingredient along the branch: its aux ingredients identify it,
+            # and two such branches correspond when they share at least one.
+            role_keys = {("aux", name) for name in auxes}
+        else:
+            # With no observable food or ingredient, a pot has no reliable
+            # counterpart. Keep the token recipe-local rather than matching on its
+            # vessel name.
+            role_keys = {("unresolved", id(recipe), root)}
+        # A sugar preparation is identifiable before its first food addition.
+        # Its recipe may explicitly emit caramel or keep it implicit in the wok.
+        # Only inspect the independent container root: seasoning added to meat
+        # later must never turn the meat branch into a sugar-preparation branch.
+        initial_additions = {
+            norm_str(node_map[int(e["node1"])].get("name", ""))
+            for e in incoming.get(root, [])
+            if canon_action(e.get("action", "")) == "add"
+            and norm_str(node_map[int(e["node1"])].get("type")) == "aux"
+        }
+        if "sugar" in initial_additions and initial_additions <= {"sugar", "oil", "water"}:
+            role_keys = {("preparation", "sugar")}
+        else:
+            # A container that directly processes an aux product is preparing
+            # that product, even if the aux chain is later added to a main food
+            # branch. Do not let the eventual main destination relabel this as
+            # a food-processing container (e.g. ginger/spice preparation as a
+            # pork wok).
+            direct_aux_processes = {
+                (
+                    canon_action(e.get("action", "")),
+                    norm_str(e.get("type", "")),
+                    state_key(node_map[int(e["node2"])]),
+                )
+                for e in recipe["edges"]
+                if int(e["node1"]) == root
+                and canon_action(e.get("action", "")) != "add"
+                and norm_str(node_map[int(e["node2"])].get("type")) == "aux"
+            }
+            if direct_aux_processes:
+                role_keys = {("preparation", tuple(sorted(direct_aux_processes)))}
+        root_keys[root] = frozenset(("container", root_names[root], key) for key in role_keys)
 
     contexts = {}
     for nid in node_map:
@@ -541,8 +635,8 @@ def build_branch_metadata(recipe):
                 int(e["index"]),
             ))
             context = origins[int(primary["node1"])]
-        contexts[nid] = frozenset(root_keys[root] for root in context)
-    return labels, contexts, frozenset(root_keys.values())
+        contexts[nid] = frozenset(key for root in context for key in root_keys[root])
+    return labels, contexts, frozenset(key for keys in root_keys.values() for key in keys)
 
 
 def build_branch_labels(recipe: Dict[str, Any]) -> Dict[int, Optional[str]]:
@@ -590,6 +684,7 @@ def build_main_seq_items(recipe: Dict[str, Any], recipe_id: str) -> List[SeqItem
     in_map = build_in_edge_map(recipe)
     branch_labels, branch_origins, recipe_branches = build_branch_metadata(recipe)
     products = unambiguous_product_branches(recipe, branch_labels, branch_origins)
+    branch_of, _ = build_branch_partition(recipe)
 
     main_nodes = sorted(
         [n for n in recipe["nodes"] if is_main_like(n)],
@@ -597,6 +692,11 @@ def build_main_seq_items(recipe: Dict[str, Any], recipe_id: str) -> List[SeqItem
     )
 
     items: List[SeqItem] = []
+    vessel_ingredients = {
+        int(n["index"]): (vessel_chain_ingredients(recipe, node_map, int(n["index"]))
+                         if is_container(n) else (frozenset(), frozenset()))
+        for n in main_nodes
+    }
 
     for pos, v in enumerate(main_nodes):
         v_idx = int(v["index"])
@@ -614,10 +714,14 @@ def build_main_seq_items(recipe: Dict[str, Any], recipe_id: str) -> List[SeqItem
                 key1=tr1(eff_edge, node_map),
                 key2=tr2(eff_edge, node_map),
                 state_out=state_key(v),
+                target_add_inputs=tuple(sorted(prev_sig_add_only(v))),
                 branch_label=branch_labels[v_idx],
                 branch_origins=branch_origins[v_idx],
                 recipe_branches=recipe_branches,
                 product_branch=products.get(v_idx),
+                vessel_mains=vessel_ingredients[v_idx][0],
+                vessel_aux=vessel_ingredients[v_idx][1],
+                branch_id=branch_of.get(v_idx),
             )
         )
 
@@ -685,6 +789,7 @@ def build_seq_items(recipe: Dict[str, Any], recipe_id: str) -> List[SeqItem]:
                 key1=tr1(e, node_map),
                 key2=tr2(e, node_map),
                 state_out=state_key(node_map[out_node]),
+                target_add_inputs=tuple(sorted(prev_sig_add_only(node_map[out_node]))),
                 branch_label=branch_labels[out_node],
                 branch_origins=branch_origins[out_node],
                 recipe_branches=recipe_branches,
@@ -730,6 +835,257 @@ def state_match_loose(a_state, b_state):
     return name_same and (physical_same or chemical_same)
 
 
+def anchor_keys(keys):
+    """Branch keys that anchor a whole recipe. Shared aux-only vessel keys do not:
+    a seasoning such as oil appears in most pans and must not block the unique
+    product bridge between otherwise unrelated branches."""
+    return frozenset(
+        key for key in keys
+        if not (isinstance(key, tuple) and len(key) == 3
+                and isinstance(key[2], tuple) and key[2][:1] == ("aux",))
+    )
+
+
+def build_branch_partition(recipe):
+    """Split a recipe into branches and describe each by its main nodes.
+
+    A branch is one continuous thread of the food flow. A new branch starts at a
+    root (a main/container node with no inherited provenance), at a split output,
+    and right after a join (a real merge of different threads); the join node
+    itself still belongs to the thread that enters it. Containers and aux nodes
+    never name a branch.
+
+    Returns (branch_of, info). branch_of maps every main-like node to its branch
+    id (None for aux nodes and for nodes that cannot be resolved). info maps a
+    branch id to {"mains": names of every main node in the branch, "aux": names
+    of the aux ingredients that feed the branch, directly or through other aux}.
+    """
+    node_map = build_node_map(recipe)
+    incoming = build_in_edge_map(recipe)
+    outgoing, parents = build_graph_maps(recipe)
+    remaining = {nid: len(parents[nid]) for nid in node_map}
+    queue = deque(sorted(nid for nid, count in remaining.items() if count == 0))
+    origins, joins, branch_of = {}, {}, {}
+    cuts_thread = {}   # a join that merges in a processed branch ends the thread
+
+    def lone_ingredient(pid):
+        """A raw ingredient: it has no incoming edge, so adding it is a step inside
+        the receiving thread, not the merge of two branches."""
+        return not incoming.get(pid)
+
+    while queue:
+        nid = queue.popleft()
+        edges = incoming.get(nid, [])
+        inherited = frozenset().union(*(origins[p] for p in parents[nid]))
+        bid = None
+        only_adds = bool(edges) and all(
+            canon_action(e.get("action", "")) == "add" or norm_str(e.get("type", "")) == "add"
+            for e in edges)
+        if is_main_like(node_map[nid]) and not inherited:
+            inherited = frozenset({nid})
+            bid = nid
+        elif norm_str(node_map[nid].get("type")) == "container" and only_adds:
+            # A vessel that is only loaded by ADD edges starts its own vessel thread,
+            # whichever raw main it happens to receive first.
+            bid = nid
+        elif edges:
+            # Aux nodes processed in a vessel (oil heated in a wok) pass the thread on.
+            primary = min(edges, key=lambda e: (
+                not bool(origins[int(e["node1"])]),
+                canon_action(e.get("action", "")) == "add"
+                or norm_str(e.get("type", "")) == "add",
+                int(e["index"]),
+            ))
+            src = int(primary["node1"])
+            bid = nid if (joins[src] and cuts_thread.get(src, True)) else branch_of.get(src)
+        split_edges = [e for e in edges if canon_action(e.get("action", "")) == "split"]
+        if split_edges and is_main_like(node_map[nid]):
+            inherited = frozenset({nid}).union(*(origins[int(e["node1"])]
+                for e in edges if e not in split_edges))
+            bid = nid
+        origins[nid] = inherited
+        contributing = [origins[p] for p in parents[nid] if origins[p]]
+        joins[nid] = (len(contributing) > 1
+                      and all(group != inherited for group in contributing))
+        # Which parents are processed branches (not raw ingredients, not the spine)?
+        spine = None
+        if edges:
+            spine = int(min(edges, key=lambda e: (
+                not bool(origins[int(e["node1"])]),
+                canon_action(e.get("action", "")) == "add"
+                or norm_str(e.get("type", "")) == "add",
+                int(e["index"])))["node1"])
+        cuts_thread[nid] = any(
+            p != spine and origins[p] and not lone_ingredient(p)
+            and norm_str(node_map[p].get("type")) != "aux"
+            for p in parents[nid])
+        branch_of[nid] = bid
+        for dst in outgoing.get(nid, []):
+            remaining[dst] -= 1
+            if remaining[dst] == 0:
+                queue.append(dst)
+
+    for nid in node_map:
+        branch_of.setdefault(nid, None)
+
+    # A vessel that only carries food (no main node of its own) belongs to the
+    # branch its process chain delivers into: an empty oven that is heated, loaded
+    # and then bakes the dish is part of the dish's branch. A vessel chain that
+    # ends by being added into something else keeps its own (aux-only) branch.
+    process_out = defaultdict(list)
+    for e in recipe["edges"]:
+        if canon_action(e.get("action", "")) != "add" and norm_str(e.get("type", "")) != "add":
+            process_out[int(e["node1"])].append(int(e["node2"]))
+    changed = True
+    while changed:
+        changed = False
+        members = defaultdict(set)
+        for nid, bid in branch_of.items():
+            if bid is not None:
+                members[bid].add(nid)
+        for bid, group in members.items():
+            if any(norm_str(node_map[n].get("type")) == "main" for n in group):
+                continue
+            successors = {
+                branch_of[t] for n in group for t in process_out.get(n, [])
+                if branch_of.get(t) is not None and branch_of[t] != bid
+            }
+            if len(successors) == 1:
+                target = next(iter(successors))
+                for n in group:
+                    branch_of[n] = target
+                changed = True
+                break
+
+    info = {}
+    for nid, bid in branch_of.items():
+        if bid is None:
+            continue
+        entry = info.setdefault(bid, {"mains": set(), "aux": set(), "members": set(), "sigs": []})
+        entry["members"].add(nid)
+        if norm_str(node_map[nid].get("type")) == "aux":
+            entry["aux"].add(norm_str(node_map[nid].get("name", "")))
+        if norm_str(node_map[nid].get("type")) == "main":
+            entry["mains"].add(norm_str(node_map[nid].get("name", "")))
+            process_in = [canon_action(e.get("action", "")) for e in incoming.get(nid, [])
+                          if canon_action(e.get("action", "")) != "add"
+                          and norm_str(e.get("type", "")) != "add"]
+            entry["sigs"].append((state_key(node_map[nid]), norm_str(node_map[nid].get("name", "")),
+                                  process_in[0] if process_in else None))
+
+    def aux_names_feeding(start_nodes):
+        """Names of every aux node that feeds the given nodes, directly or through
+        other aux nodes (aux chains such as spices added into water)."""
+        names, seen, stack = set(), set(), list(start_nodes)
+        while stack:
+            nid = stack.pop()
+            for e in incoming.get(nid, []):
+                src = int(e["node1"])
+                if src in seen or norm_str(node_map[src].get("type")) != "aux":
+                    continue
+                seen.add(src)
+                names.add(norm_str(node_map[src].get("name", "")))
+                stack.append(src)
+        return names
+
+    for bid, entry in info.items():
+        entry["aux"].update(aux_names_feeding(entry["members"]))
+        entry["mains"] = frozenset(entry["mains"])
+        entry["aux"] = frozenset(entry["aux"])
+        entry["members"] = frozenset(entry["members"])
+    return branch_of, info
+
+
+def branch_similarity(e1, e2):
+    """How well the main nodes of two branches line up, by a one-to-one greedy
+    matching of their nodes: same state and incoming action 4, same state 3, same
+    name and action 2, same name 1. Used only to choose among candidate pairs that
+    the tiers rate equally (several branches often share the name pork)."""
+    scored = []
+    for i, (state1, name1, action1) in enumerate(e1["sigs"]):
+        for j, (state2, name2, action2) in enumerate(e2["sigs"]):
+            if state1 == state2:
+                points = 4 if action1 == action2 else 3
+            elif name1 == name2:
+                points = 2 if action1 == action2 else 1
+            else:
+                continue
+            scored.append((-points, i, j))
+    used1, used2, total = set(), set(), 0
+    for negative, i, j in sorted(scored):
+        if i in used1 or j in used2:
+            continue
+        used1.add(i)
+        used2.add(j)
+        total -= negative
+    return total
+
+
+def pair_branches(info1, info2, tiers=(1, 2, 3), unique_only=False):
+    """One-to-one pairing of the branches of two recipes.
+
+    Tiers, strongest first: identical sets of main names; at least one shared
+    main; no shared main but at least one shared aux. Within a tier the pair with
+    the most shared names (then the best node-by-node similarity, then the larger
+    overlap ratio) is taken first, and a
+    branch that has been paired is never paired again. Returns a set of
+    (branch id in recipe 1, branch id in recipe 2).
+    """
+    def branches_per_main(info):
+        counts = Counter()
+        for entry in info.values():
+            counts.update(entry["mains"])
+        return counts
+
+    per_main1, per_main2 = branches_per_main(info1), branches_per_main(info2)
+
+    def candidates(tier):
+        for b1, e1 in info1.items():
+            for b2, e2 in info2.items():
+                shared_mains = e1["mains"] & e2["mains"]
+                if unique_only:
+                    # Only a main that belongs to exactly one branch in each recipe
+                    # can pair branches (meat_sauce, beef); a name that occurs in
+                    # many branches (pork) cannot tell which two correspond.
+                    shared_mains = {m for m in shared_mains
+                                    if per_main1[m] == 1 and per_main2[m] == 1}
+                    if not shared_mains:
+                        continue
+                shared_aux = e1["aux"] & e2["aux"]
+                if tier == 1:
+                    if not e1["mains"] or e1["mains"] != e2["mains"] or not shared_mains:
+                        continue
+                    shared = shared_mains
+                elif tier == 2:
+                    if not shared_mains:
+                        continue
+                    shared = shared_mains
+                else:
+                    if shared_mains or not shared_aux:
+                        continue
+                    shared = shared_aux
+                union = len(e1["mains"] | e2["mains"] | e1["aux"] | e2["aux"]) or 1
+                # Among equally named candidates, prefer the branches whose main
+                # nodes actually line up (several pork branches are common).
+                yield (-len(shared), -branch_similarity(e1, e2), -len(shared) / union, b1, b2)
+
+    used1, used2, pairs = set(), set(), set()
+    for tier in tiers:
+        for _, _, _, b1, b2 in sorted(candidates(tier)):
+            if b1 in used1 or b2 in used2:
+                continue
+            used1.add(b1)
+            used2.add(b2)
+            pairs.add((b1, b2))
+    return pairs
+
+
+def branch_pairing(recipe1, recipe2, tiers=(1, 2, 3), unique_only=False):
+    branch_of1, info1 = build_branch_partition(recipe1)
+    branch_of2, info2 = build_branch_partition(recipe2)
+    return pair_branches(info1, info2, tiers, unique_only), branch_of1, branch_of2
+
+
 def branch_contexts_compatible(label1, origins1, branches1, label2, origins2, branches2):
     """Shared food/qualified-container identities constrain join stages."""
     if label1 is None or label2 is None:
@@ -743,23 +1099,98 @@ def branch_contexts_compatible(label1, origins1, branches1, label2, origins2, br
     return label1 == label2
 
 
-def match_by_rule(a, b, rule_name):
-    if not branch_contexts_compatible(
+def _apply_rule(a, b, rule_name):
+    if rule_name == "exact":
+        return a.key1 == b.key1
+    if rule_name == "similar2":
+        return a.key2 == b.key2
+    if rule_name == "similar3":
+        return a.state_out == b.state_out
+    if rule_name == "similar2_loose":
+        a_action, a_type, _ = a.key2
+        b_action, b_type, _ = b.key2
+        return (a_action == b_action and a_type == b_type
+                and state_match_loose(a.state_out, b.state_out))
+    if rule_name == "similar3_loose":
+        return state_match_loose(a.state_out, b.state_out)
+    raise ValueError(f"Unknown rule: {rule_name}")
+
+
+def match_by_rule(a, b, rule_name, predecessors_correspond=False, branch_pairs=None, branch_allow=None):
+    # Two nodes may only merge when their branches have been paired (see
+    # pair_branches). There is no other way around that requirement.
+    if branch_pairs is not None:
+        if (a.branch_id, b.branch_id) not in branch_pairs:
+            return False
+        return _apply_rule(a, b, rule_name)
+
+    loaded_containers_correspond = (
+        len(a.state_out) > 1 and len(b.state_out) > 1
+        and norm_str(a.state_out[1]) == "container"
+        and norm_str(b.state_out[1]) == "container"
+        and a.state_out == b.state_out
+        and bool(a.target_add_inputs)
+        and a.target_add_inputs == b.target_add_inputs
+    )
+    # Two vessels in the same state correspond when their own process chains share
+    # a main ingredient (or, if neither chain has any main ingredient, an aux
+    # ingredient), however the food reached them: an empty pan that is heated and
+    # then loaded is the same step as a pan that is loaded directly.
+    vessels_correspond = (
+        len(a.state_out) > 1 and len(b.state_out) > 1
+        and norm_str(a.state_out[1]) == "container"
+        and a.state_out == b.state_out
+        and (bool(a.vessel_mains & b.vessel_mains)
+             or (not a.vessel_mains and not b.vessel_mains
+                 and bool(a.vessel_aux & b.vessel_aux)))
+    )
+    contexts_compatible = branch_contexts_compatible(
             a.branch_label, a.branch_origins, a.recipe_branches,
-            b.branch_label, b.branch_origins, b.recipe_branches):
-        # A unique product can identify the corresponding stage when neither
-        # branch has a shared root anchor (e.g. starch -> sauce vs aux -> sauce).
-        # Never override an existing shared-anchor mismatch: that protects
-        # pre-join vs post-join stages and independent food branches.
-        common = a.recipe_branches & b.recipe_branches
-        product_corresponds = (
+            b.branch_label, b.branch_origins, b.recipe_branches)
+    # Two branches that share a main ingredient (and were paired one-to-one on
+    # that basis) may correspond even when their root provenance differs (lamb
+    # sauce and beef sauce, both ending in meat_sauce). Similar tiers only.
+    branches_share_main = (branch_allow is not None and a.branch_id is not None
+                           and (a.branch_id, b.branch_id) in branch_allow)
+    if not contexts_compatible:
+        # A unique product can identify the corresponding stage across certain
+        # root differences. An already matched predecessor is stronger local
+        # evidence that the two downstream states continue corresponding flows.
+        # Either exception can produce only a similar match when the broader
+        # branch contexts differ.
+        common = anchor_keys(a.recipe_branches & b.recipe_branches)
+        same_unique_product = (
             a.branch_label is not None and b.branch_label is not None
             and a.product_branch is not None
             and a.product_branch == b.product_branch
+        )
+        product_without_shared_anchor = (
+            same_unique_product
             and not (a.branch_origins & common)
             and not (b.branch_origins & common)
         )
-        if not product_corresponds:
+        product_with_variant_ingredients = (
+            same_unique_product
+            and a.branch_label == b.branch_label
+            and bool(a.branch_origins & common)
+            and bool(b.branch_origins & common)
+        )
+        if (not product_without_shared_anchor
+                and not product_with_variant_ingredients
+                and not predecessors_correspond
+                and not loaded_containers_correspond
+                and not vessels_correspond
+                and not branches_share_main):
+            return False
+        # When corresponding product stages contain different shared ingredient
+        # roots, they represent procedural variants. They may be similar, but
+        # the provenance difference must keep them out of the exact tier.
+        if ((product_with_variant_ingredients
+                or predecessors_correspond
+                or loaded_containers_correspond
+                or vessels_correspond
+                or branches_share_main)
+                and rule_name == "exact"):
             return False
 
     if rule_name == "exact":
@@ -835,6 +1266,21 @@ def can_non_main_exact_match(idx1, idx2, node_map1, node_map2):
 
     return state_key(n1) == state_key(n2)
 
+def can_aux_similar_match(idx1, idx2, node_map1, node_map2):
+    """Aux nodes that are not exact matches may still correspond like main nodes do:
+    same name and the same physical or chemical state (the loose tier), e.g. raw
+    and cooked water that feed the same merged sauce. Containers never do."""
+    n1 = node_map1.get(int(idx1))
+    n2 = node_map2.get(int(idx2))
+    if not n1 or not n2:
+        return False
+    if norm_str(n1.get("type")) != "aux" or norm_str(n2.get("type")) != "aux":
+        return False
+    if state_key(n1) == state_key(n2):
+        return False
+    return state_match_loose(state_key(n1), state_key(n2))
+
+
 def compare_non_main_nodes(recipe1, recipe2, recipe1_id, recipe2_id, main_merged_nodes):
     node_map1 = build_node_map(recipe1)
     node_map2 = build_node_map(recipe2)
@@ -845,15 +1291,41 @@ def compare_non_main_nodes(recipe1, recipe2, recipe1_id, recipe2_id, main_merged
     seen = set()
     q = deque()
 
-    def add_pair(n1, n2):
+    def add_pair(n1, n2, kind="exact"):
         dom = norm_str(node_map1[int(n1)].get("type"))
         key = (dom, int(n1), int(n2))
         if key in seen:
             return False
         seen.add(key)
-        matched.append((dom, int(n1), int(n2)))
+        matched.append((dom, int(n1), int(n2), kind))
         q.append((int(n1), int(n2)))
         return True
+
+    def pair_ups(ups1, ups2):
+        """Exact matches first for every upstream node, then similar aux matches
+        among what is left, so a similar pair never takes a node that another
+        upstream node matches exactly. One-to-one."""
+        used1, used2 = set(), set()
+        for u1 in ups1:
+            for u2 in ups2:
+                if u2 in used2:
+                    continue
+                if can_non_main_exact_match(u1, u2, node_map1, node_map2):
+                    add_pair(u1, u2)
+                    used1.add(u1)
+                    used2.add(u2)
+                    break
+        for u1 in ups1:
+            if u1 in used1:
+                continue
+            for u2 in ups2:
+                if u2 in used2:
+                    continue
+                if can_aux_similar_match(u1, u2, node_map1, node_map2):
+                    add_pair(u1, u2, "similar")
+                    used1.add(u1)
+                    used2.add(u2)
+                    break
 
     # 只从已 merge 的 main/container node 往最近上游找
     for m in main_merged_nodes:
@@ -871,15 +1343,7 @@ def compare_non_main_nodes(recipe1, recipe2, recipe1_id, recipe2_id, main_merged
             if not is_main_like(node_map2[u])
         ]
 
-        used2 = set()
-        for u1 in ups1:
-            for u2 in ups2:
-                if u2 in used2:
-                    continue
-                if can_non_main_exact_match(u1, u2, node_map1, node_map2):
-                    add_pair(u1, u2)
-                    used2.add(u2)
-                    break
+        pair_ups(ups1, ups2)
 
     # 从刚 merge 的 non-main pair 继续逐层向上
     while q:
@@ -894,16 +1358,8 @@ def compare_non_main_nodes(recipe1, recipe2, recipe1_id, recipe2_id, main_merged
             if not is_main_like(node_map2[u])
         ]
 
-        used2 = set()
-        for u1 in ups1:
-            for u2 in ups2:
-                if u2 in used2:
-                    continue
-                if can_non_main_exact_match(u1, u2, node_map1, node_map2):
-                    add_pair(u1, u2)
-                    used2.add(u2)
-                    break
-            # 这一层没配上，这条链就停；这里什么都不用做
+        pair_ups(ups1, ups2)
+        # 这一层没配上，这条链就停；这里什么都不用做
 
     # ========= 把 matched 转成 records =========
     records = []
@@ -912,13 +1368,13 @@ def compare_non_main_nodes(recipe1, recipe2, recipe1_id, recipe2_id, main_merged
 
     matched_sorted = sorted(matched, key=lambda x: (x[1], x[2]))
 
-    for dom, n1, n2 in matched_sorted:
+    for dom, n1, n2, kind in matched_sorted:
         used_r1.add(int(n1))
         used_r2.add(int(n2))
 
         records.append(
             MatchRecord(
-                kind="exact",
+                kind=kind,
                 r1_edge=None,
                 r2_edge=None,
                 r1_out_node=int(n1),
@@ -1142,6 +1598,60 @@ def hierarchical_main_match_two_stage(recipe1, recipe2):
     seq2 = build_main_seq_items(recipe2, recipe2.get("recipe_id", "recipe2"))
     valid1 = {n for n, label in build_branch_labels(recipe1).items() if label is not None}
     valid2 = {n for n, label in build_branch_labels(recipe2).items() if label is not None}
+    branch_pairs = branch_pairing(recipe1, recipe2)[0] if USE_BRANCH_PAIRING else None
+    branch_allow = branch_pairing(recipe1, recipe2, tiers=(1, 2), unique_only=True)[0]
+    _, branch_info1 = build_branch_partition(recipe1)
+    _, branch_info2 = build_branch_partition(recipe2)
+    partners1, partners2 = defaultdict(set), defaultdict(set)
+
+    # Start nodes (main/container nodes with no incoming main-like edge) are merged
+    # outside this loop, in graph_builder. Count those merges as the first merge
+    # of their branches, so a later node of the same two branches is not mistaken
+    # for a second, unrelated merge (R3 sugar wok 17 with R5 sugar wok 32, then
+    # their next wok nodes).
+    node_map1, node_map2 = build_node_map(recipe1), build_node_map(recipe2)
+    labels1, origins1, branches1 = build_branch_metadata(recipe1)
+    labels2, origins2, branches2 = build_branch_metadata(recipe2)
+    branch_of1, _ = build_branch_partition(recipe1)
+    branch_of2, _ = build_branch_partition(recipe2)
+
+    def start_nodes(recipe, node_map, items):
+        recorded = {item.out_node for item in items}
+        main_like = {int(n["index"]) for n in recipe["nodes"] if is_main_like(n)}
+        has_input = {int(e["node2"]) for e in recipe["edges"]
+                     if int(e["node1"]) in main_like and int(e["node2"]) in main_like}
+        return sorted(n for n in main_like if n not in has_input and n not in recorded)
+
+    taken_starts = set()
+    for s1 in start_nodes(recipe1, node_map1, seq1):
+        for s2 in start_nodes(recipe2, node_map2, seq2):
+            if s2 in taken_starts:
+                continue
+            if (state_key(node_map1[s1]) == state_key(node_map2[s2])
+                    and branch_contexts_compatible(
+                        labels1.get(s1), origins1[s1], branches1,
+                        labels2.get(s2), origins2[s2], branches2)):
+                taken_starts.add(s2)
+                if branch_of1.get(s1) is not None and branch_of2.get(s2) is not None:
+                    partners1[branch_of1[s1]].add(branch_of2[s2])
+                    partners2[branch_of2[s2]].add(branch_of1[s1])
+                break
+
+    def branch_conflict(a, b):
+        """A branch that has already merged with one branch of the other recipe may
+        not merge with another branch that shares none of its main ingredients (the
+        eggplant branch with the eggplant branch, then also with the final branch).
+        Merging with several branches that each share a main is allowed: that is
+        one thread segmented differently in the two recipes."""
+        branch_a, branch_b = a.branch_id, b.branch_id
+        if branch_a is None or branch_b is None or branch_b in partners1[branch_a]:
+            return False
+        mains_a = branch_info1[branch_a]["mains"]
+        mains_b = branch_info2[branch_b]["mains"]
+        if mains_a & mains_b:
+            return False
+        return bool((partners1[branch_a] and mains_a) or (partners2[branch_b] and mains_b))
+
     used1, used2, pairs, records = set(), set(), [], []
     # Keep the original exact/similar priority, but constrain by graph
     # dependencies rather than one global node-index sequence.
@@ -1150,10 +1660,26 @@ def hierarchical_main_match_two_stage(recipe1, recipe2):
             if a.out_node in used1:
                 continue
             for b in seq2:
-                if b.out_node in used2 or not match_by_rule(a, b, rule):
+                predecessors_correspond = any(
+                    left.out_node == int(a.edge["node1"])
+                    and right.out_node == int(b.edge["node1"])
+                    for left, right in pairs
+                )
+                if (b.out_node in used2
+                        or not match_by_rule(
+                            a, b, rule,
+                            predecessors_correspond=predecessors_correspond,
+                            branch_pairs=branch_pairs,
+                            branch_allow=branch_allow,
+                        )):
                     continue
                 if not _acyclic_alignment(recipe1, recipe2, pairs + [(a, b)], valid1, valid2):
                     continue
+                if branch_conflict(a, b):
+                    continue
+                if a.branch_id is not None and b.branch_id is not None:
+                    partners1[a.branch_id].add(b.branch_id)
+                    partners2[b.branch_id].add(a.branch_id)
                 used1.add(a.out_node)
                 used2.add(b.out_node)
                 pairs.append((a, b))
