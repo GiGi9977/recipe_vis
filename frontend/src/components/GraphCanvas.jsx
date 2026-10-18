@@ -5,12 +5,12 @@ import GraphNode from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import {placeEdgeLabels} from "../layout/edgeLabels";
 
-const MIN_SCALE=.18,MAX_SCALE=3.5,ZOOM_FACTOR=1.18;
+const MIN_SCALE=.18,MAX_SCALE=3.5,ZOOM_FACTOR=1.18,LABEL_DRAG_MS=150;
 const clamp=value=>Math.max(MIN_SCALE,Math.min(MAX_SCALE,value));
 
 export default function GraphCanvas({graph,selected,onSelect,layoutMode}){
   const{status,layout,error}=useGraphLayout(graph,layoutMode);
-  const canvasRef=useRef(null),dragRef=useRef(null),suppressClickRef=useRef(false);
+  const canvasRef=useRef(null),dragRef=useRef(null),suppressClickRef=useRef(false),labelCache=useRef({labels:[],at:0,graph:null,layout:null,positions:null});
   const[view,setView]=useState({x:0,y:0,scale:1});
   const[dragging,setDragging]=useState(false);
   const[nodePositions,setNodePositions]=useState(new Map());
@@ -22,16 +22,24 @@ export default function GraphCanvas({graph,selected,onSelect,layoutMode}){
   useEffect(()=>{const canvas=canvasRef.current;if(!canvas)return;const observer=new ResizeObserver(fit);observer.observe(canvas);return()=>observer.disconnect();},[fit]);
   useEffect(()=>{const keydown=event=>{if(event.target instanceof HTMLInputElement||event.target instanceof HTMLSelectElement||event.target instanceof HTMLTextAreaElement)return;switch(event.key){case"+":case"=":event.preventDefault();zoomAt(ZOOM_FACTOR);break;case"-":case"_":event.preventDefault();zoomAt(1/ZOOM_FACTOR);break;case"0":case"f":case"F":event.preventDefault();fit();break;case"ArrowLeft":event.preventDefault();setView(v=>({...v,x:v.x+48}));break;case"ArrowRight":event.preventDefault();setView(v=>({...v,x:v.x-48}));break;case"ArrowUp":event.preventDefault();setView(v=>({...v,y:v.y+48}));break;case"ArrowDown":event.preventDefault();setView(v=>({...v,y:v.y-48}));break;default:break;}};window.addEventListener("keydown",keydown);return()=>window.removeEventListener("keydown",keydown);},[fit,zoomAt]);
   function pointerDown(event){if(event.button!==0)return;canvasRef.current?.focus();event.currentTarget.setPointerCapture(event.pointerId);dragRef.current={kind:"canvas",capture:event.currentTarget,pointerId:event.pointerId,x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY};setDragging(true);}
-  function nodePointerDown(event,node){if(event.button!==0)return;event.stopPropagation();canvasRef.current?.focus();event.currentTarget.setPointerCapture(event.pointerId);dragRef.current={kind:"node",nodeId:node.id,capture:event.currentTarget,pointerId:event.pointerId,x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY};setDragging(true);}
+  const nodePointerDown=useCallback((event,node)=>{if(event.button!==0)return;event.stopPropagation();canvasRef.current?.focus();event.currentTarget.setPointerCapture(event.pointerId);dragRef.current={kind:"node",nodeId:node.id,capture:event.currentTarget,pointerId:event.pointerId,x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY};setDragging(true);},[]);
   function pointerMove(event){const drag=dragRef.current;if(!drag||drag.pointerId!==event.pointerId)return;const dx=event.clientX-drag.x,dy=event.clientY-drag.y;if(Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY)>4)suppressClickRef.current=true;drag.x=event.clientX;drag.y=event.clientY;if(drag.kind==="node")setNodePositions(current=>{const next=new Map(current),base=next.get(drag.nodeId)||layout.positions.get(drag.nodeId);next.set(drag.nodeId,{...base,x:base.x+dx/view.scale,y:base.y+dy/view.scale});return next;});else setView(v=>({...v,x:v.x+dx,y:v.y+dy}));}
   function pointerUp(event){const drag=dragRef.current;if(!drag||drag.pointerId!==event.pointerId)return;dragRef.current=null;setDragging(false);if(drag.capture?.hasPointerCapture?.(event.pointerId))drag.capture.releasePointerCapture(event.pointerId);}
-  function selectItem(item){if(suppressClickRef.current){suppressClickRef.current=false;return;}onSelect(item);}
+  const selectItem=useCallback(item=>{if(suppressClickRef.current){suppressClickRef.current=false;return;}onSelect(item);},[onSelect]);
   function wheel(event){event.preventDefault();zoomAt(Math.exp(-event.deltaY*.0015),event.clientX,event.clientY);}
   if(status==="loading"||status==="idle")return <div className="canvas-status">Calculating layout…</div>;
   if(error)return <div className="canvas-status error">{error.message}</div>;
   const active=item=>selectedSides(item,selected);
   const positionFor=id=>nodePositions.get(id)||layout.positions.get(id);
-  const edgeLabels=placeEdgeLabels(graph,positionFor);
+  // Labels depend on node positions only, not on the view: panning and zooming reuse them,
+  // and while a node is being dragged they are refreshed at most every LABEL_DRAG_MS.
+  const nodeDragging=dragging&&dragRef.current?.kind==="node";
+  let cache=labelCache.current;
+  const sameInputs=cache.graph===graph&&cache.layout===layout;
+  if(!(sameInputs&&cache.positions===nodePositions)&&!(nodeDragging&&sameInputs&&performance.now()-cache.at<LABEL_DRAG_MS)){
+    cache=labelCache.current={labels:placeEdgeLabels(graph,positionFor),at:performance.now(),graph,layout,positions:nodePositions};
+  }
+  const edgeLabels=cache.labels;
   return <div ref={canvasRef} className={`canvas${dragging?" is-dragging":""}`} tabIndex={0} onWheel={wheel}>
     <div className="canvas-tools"><button onClick={()=>zoomAt(ZOOM_FACTOR)} title="Zoom in (+)">+</button><button onClick={()=>zoomAt(1/ZOOM_FACTOR)} title="Zoom out (−)">−</button><button onClick={fit} title="Fit graph (0 or F)">Fit</button><output>{Math.round(view.scale*100)}%</output></div>
     <svg className="graph-stage" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>

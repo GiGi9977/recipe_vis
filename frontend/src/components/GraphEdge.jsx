@@ -38,7 +38,7 @@ function taperedPath(points,startWidth=7,endWidth=2.5,steps=28){
   return `${outline.map((point,index)=>`${index?"L":"M"}${point[0]},${point[1]}`).join(" ")} Z`;
 }
 
-export default function GraphEdge({edge,source,target,sourceNode,targetNode,selected,onSelect}){
+function GraphEdge({edge,source,target,sourceNode,targetNode,selected,onSelect}){
   const start=recipeAnchor(sourceNode,source,edge,"source"),end=recipeAnchor(targetNode,target,edge,"target");
   const x1=start.x,y1=start.y,x2=end.x,y2=end.y,add=isAdd(edge);
   const side=String(edge.style||"shared").toUpperCase();
@@ -64,3 +64,6 @@ export default function GraphEdge({edge,source,target,sourceNode,targetNode,sele
     <title>{edge.action}{edge.duration?` · ${edge.duration}`:""}</title>
   </g>;
 }
+
+// Re-render only when this item's own inputs change, so panning and dragging another node stay cheap.
+export default React.memo(GraphEdge);

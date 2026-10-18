@@ -42,7 +42,7 @@ export function edgeCenters(x1,y1,x2,y2,cycles=0,maxAmplitude=3.6){
   const length=Math.hypot(x2-x1,y2-y1)||1,nx=-(y2-y1)/length,ny=(x2-x1)/length;
   // A short wavelength gets a smaller swing so the line stays a smooth wave.
   const amplitude=cycles?Math.min(maxAmplitude,length/cycles*.3):0;
-  const steps=cycles?Math.max(24,cycles*14):1;
+  const steps=cycles?Math.max(24,cycles*12):1;
   return Array.from({length:steps+1},(_,index)=>{
     const t=index/steps,ease=Math.min(1,t*5,(1-t)*5),offset=cycles?amplitude*ease*Math.sin(2*Math.PI*cycles*t):0;
     return [x1+(x2-x1)*t+nx*offset,y1+(y2-y1)*t+ny*offset];

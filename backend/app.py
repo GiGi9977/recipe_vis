@@ -161,8 +161,18 @@ app = FastAPI()
 
 # Serve icons at /icons/<name>.png
 _ICONS_DIR = Path(__file__).parent.parent / "data" / "icons"
+class _FreshStaticFiles(StaticFiles):
+    """Icons are replaced while the app is running: make the browser revalidate each time
+    (a 304 when unchanged) instead of showing a heuristically cached older image."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 if _ICONS_DIR.exists():
-    app.mount("/icons", StaticFiles(directory=str(_ICONS_DIR)), name="icons")
+    app.mount("/icons", _FreshStaticFiles(directory=str(_ICONS_DIR)), name="icons")
 
 app.add_middleware(
     CORSMiddleware,
