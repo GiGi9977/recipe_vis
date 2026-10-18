@@ -1,23 +1,34 @@
 # -*- coding: utf-8 -*-
 
 import json
+import sys
 import time
 from pathlib import Path
 
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent.parent
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from openai import OpenAI
+from data.generate_previous import (
+    fill_previous_for_recipe,
+    propagate_flavor_to_next_main,
+)
+from data.heat_level import heat_level_errors
 
 
 # ============================================================
 # Configuration
 # ============================================================
 
-BASE_DIR = Path(__file__).resolve().parent
-
 INPUT_DIR = BASE_DIR / "original_text"
 OUTPUT_DIR = BASE_DIR / "output"
 PROMPT_FILE = BASE_DIR / "recipe_graph_prompt.txt"
 
-MODEL = "gpt-5.4"
+MODEL = "gpt-6-sol"
 
 # True = 如果 JSON 已经存在，就跳过
 SKIP_EXISTING = True
@@ -32,7 +43,7 @@ MAX_RETRIES = 3
 # 自动读取环境变量:
 # OPENAI_API_KEY
 client = OpenAI()
-
+print("API endpoint:", client.base_url)
 
 # ============================================================
 # Load Prompt
@@ -118,6 +129,18 @@ RECIPE_TEXT:
             + raw_text
         ) from e
 
+    # recipe_id is deterministic request metadata. Do not rely on the model
+    # to reproduce it correctly.
+    graph["recipe_id"] = recipe_id
+
+    # Provenance is fully determined by finalized nodes and edges. Generating
+    # it locally shortens the model output and guarantees edge consistency.
+    fill_previous_for_recipe(graph)
+
+    # The model emits each ingredient's intrinsic flavor. Accumulate flavors
+    # deterministically across the finalized dependency graph before saving.
+    propagate_flavor_to_next_main(graph)
+
     return graph
 
 
@@ -142,11 +165,38 @@ def validate_graph(graph):
     if "recipe_id" not in graph:
         errors.append("Missing recipe_id")
 
+    if "source_text" not in graph:
+        errors.append("Missing source_text")
+
+    if "text_steps" not in graph:
+        errors.append("Missing text_steps")
+
     if errors:
         return errors
 
     nodes = graph["nodes"]
     edges = graph["edges"]
+    source_text = graph["source_text"]
+    text_steps = graph["text_steps"]
+
+    for step in text_steps:
+        step_id = step.get("id", "<missing id>")
+        original_text = step.get("text")
+        english_text = step.get("text_en")
+        start = step.get("start_char")
+        end = step.get("end_char")
+
+        if not isinstance(english_text, str) or not english_text.strip():
+            errors.append(f"Text step {step_id}: missing text_en")
+
+        if (
+            not isinstance(source_text, str)
+            or not isinstance(original_text, str)
+            or not isinstance(start, int)
+            or not isinstance(end, int)
+            or source_text[start:end] != original_text
+        ):
+            errors.append(f"Text step {step_id}: invalid source span")
 
     node_ids = [
         node.get("index")
@@ -261,6 +311,8 @@ def validate_graph(graph):
                 f"({node.get('name')}) "
                 f"is disconnected"
             )
+
+    errors.extend(heat_level_errors(edges))
 
     return errors
 

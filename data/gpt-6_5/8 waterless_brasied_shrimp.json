@@ -1,0 +1,946 @@
+{
+  "source_text": "Recipe text:\n\n1. 锅内铺姜和葱，放上虾，淋两圈料酒，盖锅盖中火焖 6 分钟，过冷水剥壳。 \n2. 调酱汁：葱、蒜、小米辣、生抽 2 勺、陈醋 1 勺、香油 1 勺、蚝油 1 勺、凉白开适量，拌匀即可。",
+  "text_steps": [
+    {
+      "id": "S001",
+      "text": "锅内铺姜和葱",
+      "start_char": 17,
+      "end_char": 23,
+      "node_indices": [
+        1,
+        3
+      ],
+      "edge_indices": [
+        1
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 1,
+          "edge_index": 1,
+          "role": "source"
+        },
+        {
+          "node_index": 3,
+          "edge_index": 1,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S002",
+      "text": "锅内铺姜和葱",
+      "start_char": 17,
+      "end_char": 23,
+      "node_indices": [
+        2,
+        3
+      ],
+      "edge_indices": [
+        2
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 2,
+          "edge_index": 2,
+          "role": "source"
+        },
+        {
+          "node_index": 3,
+          "edge_index": 2,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S003",
+      "text": "放上虾",
+      "start_char": 24,
+      "end_char": 27,
+      "node_indices": [
+        3,
+        4
+      ],
+      "edge_indices": [
+        3
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 4,
+          "edge_index": 3,
+          "role": "source"
+        },
+        {
+          "node_index": 3,
+          "edge_index": 3,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S004",
+      "text": "淋两圈料酒",
+      "start_char": 28,
+      "end_char": 33,
+      "node_indices": [
+        3,
+        5,
+        6
+      ],
+      "edge_indices": [
+        4,
+        5
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 5,
+          "edge_index": 4,
+          "role": "source"
+        },
+        {
+          "node_index": 3,
+          "edge_index": 4,
+          "role": "receiver"
+        },
+        {
+          "node_index": 3,
+          "edge_index": 5,
+          "role": "input"
+        },
+        {
+          "node_index": 6,
+          "edge_index": 5,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S005",
+      "text": "盖锅盖中火焖 6 分钟",
+      "start_char": 34,
+      "end_char": 45,
+      "node_indices": [
+        6,
+        7
+      ],
+      "edge_indices": [
+        6
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 6,
+          "edge_index": 6,
+          "role": "input"
+        },
+        {
+          "node_index": 7,
+          "edge_index": 6,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S006",
+      "text": "过冷水",
+      "start_char": 46,
+      "end_char": 49,
+      "node_indices": [
+        7,
+        8,
+        9
+      ],
+      "edge_indices": [
+        7,
+        8
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 8,
+          "edge_index": 7,
+          "role": "source"
+        },
+        {
+          "node_index": 7,
+          "edge_index": 7,
+          "role": "receiver"
+        },
+        {
+          "node_index": 7,
+          "edge_index": 8,
+          "role": "input"
+        },
+        {
+          "node_index": 9,
+          "edge_index": 8,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S007",
+      "text": "剥壳",
+      "start_char": 49,
+      "end_char": 51,
+      "node_indices": [
+        9,
+        10
+      ],
+      "edge_indices": [
+        9
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 9,
+          "edge_index": 9,
+          "role": "input"
+        },
+        {
+          "node_index": 10,
+          "edge_index": 9,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S008",
+      "text": "葱、蒜",
+      "start_char": 61,
+      "end_char": 64,
+      "node_indices": [
+        11,
+        12
+      ],
+      "edge_indices": [
+        10
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 12,
+          "edge_index": 10,
+          "role": "source"
+        },
+        {
+          "node_index": 11,
+          "edge_index": 10,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S009",
+      "text": "小米辣",
+      "start_char": 65,
+      "end_char": 68,
+      "node_indices": [
+        11,
+        13
+      ],
+      "edge_indices": [
+        11
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 13,
+          "edge_index": 11,
+          "role": "source"
+        },
+        {
+          "node_index": 11,
+          "edge_index": 11,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S010",
+      "text": "生抽 2 勺",
+      "start_char": 69,
+      "end_char": 75,
+      "node_indices": [
+        11,
+        14
+      ],
+      "edge_indices": [
+        12
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 14,
+          "edge_index": 12,
+          "role": "source"
+        },
+        {
+          "node_index": 11,
+          "edge_index": 12,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S011",
+      "text": "陈醋 1 勺",
+      "start_char": 76,
+      "end_char": 82,
+      "node_indices": [
+        11,
+        15
+      ],
+      "edge_indices": [
+        13
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 15,
+          "edge_index": 13,
+          "role": "source"
+        },
+        {
+          "node_index": 11,
+          "edge_index": 13,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S012",
+      "text": "香油 1 勺",
+      "start_char": 83,
+      "end_char": 89,
+      "node_indices": [
+        11,
+        16
+      ],
+      "edge_indices": [
+        14
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 16,
+          "edge_index": 14,
+          "role": "source"
+        },
+        {
+          "node_index": 11,
+          "edge_index": 14,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S013",
+      "text": "蚝油 1 勺",
+      "start_char": 90,
+      "end_char": 96,
+      "node_indices": [
+        11,
+        17
+      ],
+      "edge_indices": [
+        15
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 17,
+          "edge_index": 15,
+          "role": "source"
+        },
+        {
+          "node_index": 11,
+          "edge_index": 15,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S014",
+      "text": "凉白开适量",
+      "start_char": 97,
+      "end_char": 102,
+      "node_indices": [
+        11,
+        18
+      ],
+      "edge_indices": [
+        16
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 18,
+          "edge_index": 16,
+          "role": "source"
+        },
+        {
+          "node_index": 11,
+          "edge_index": 16,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S015",
+      "text": "拌匀即可",
+      "start_char": 103,
+      "end_char": 107,
+      "node_indices": [
+        11,
+        19
+      ],
+      "edge_indices": [
+        17
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 11,
+          "edge_index": 17,
+          "role": "input"
+        },
+        {
+          "node_index": 19,
+          "edge_index": 17,
+          "role": "output"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "index": 1,
+      "container": "none",
+      "name": "ginger",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "deodorizing",
+      "previous": [],
+      "text_step_ids": [
+        "S001"
+      ]
+    },
+    {
+      "index": 2,
+      "container": "none",
+      "name": "scallion",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "aromatic",
+      "previous": [],
+      "text_step_ids": [
+        "S002"
+      ]
+    },
+    {
+      "index": 3,
+      "container": "sim_pot",
+      "name": "sim_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 1,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "ginger"
+        },
+        {
+          "edge_index": 2,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "scallion"
+        },
+        {
+          "edge_index": 3,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "shrimp"
+        },
+        {
+          "edge_index": 4,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "cooking_wine"
+        }
+      ],
+      "text_step_ids": [
+        "S001",
+        "S002",
+        "S003",
+        "S004"
+      ]
+    },
+    {
+      "index": 4,
+      "container": "none",
+      "name": "shrimp",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "umami",
+      "previous": [],
+      "text_step_ids": [
+        "S003"
+      ]
+    },
+    {
+      "index": 5,
+      "container": "none",
+      "name": "cooking_wine",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "deodorizing",
+      "previous": [],
+      "text_step_ids": [
+        "S004"
+      ]
+    },
+    {
+      "index": 6,
+      "container": "sim_pot",
+      "name": "shrimp",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "umami",
+      "previous": [
+        {
+          "edge_index": 5,
+          "action": "drizzle",
+          "type": "prep",
+          "source_ingredient": "sim_pot"
+        }
+      ],
+      "text_step_ids": [
+        "S004",
+        "S005"
+      ]
+    },
+    {
+      "index": 7,
+      "container": "none",
+      "name": "shrimp",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "cooked",
+      "flavor": "umami",
+      "previous": [
+        {
+          "edge_index": 6,
+          "action": "simmer",
+          "type": "heat",
+          "source_ingredient": "shrimp"
+        },
+        {
+          "edge_index": 7,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "water"
+        }
+      ],
+      "text_step_ids": [
+        "S005",
+        "S006"
+      ]
+    },
+    {
+      "index": 8,
+      "container": "none",
+      "name": "water",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S006"
+      ]
+    },
+    {
+      "index": 9,
+      "container": "none",
+      "name": "shrimp",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "cooked",
+      "flavor": "umami",
+      "previous": [
+        {
+          "edge_index": 8,
+          "action": "ice",
+          "type": "cold",
+          "source_ingredient": "shrimp"
+        }
+      ],
+      "text_step_ids": [
+        "S006",
+        "S007"
+      ]
+    },
+    {
+      "index": 10,
+      "container": "none",
+      "name": "shrimp",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "cooked",
+      "flavor": "umami",
+      "previous": [
+        {
+          "edge_index": 9,
+          "action": "prepare",
+          "type": "prep",
+          "source_ingredient": "shrimp"
+        }
+      ],
+      "text_step_ids": [
+        "S007"
+      ]
+    },
+    {
+      "index": 11,
+      "container": "none",
+      "name": "scallion",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "aromatic",
+      "previous": [
+        {
+          "edge_index": 10,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "garlic"
+        },
+        {
+          "edge_index": 11,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "chili_pepper"
+        },
+        {
+          "edge_index": 12,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "light_soy"
+        },
+        {
+          "edge_index": 13,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "vinegar"
+        },
+        {
+          "edge_index": 14,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "sesame_oil"
+        },
+        {
+          "edge_index": 15,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "oyster_sauce"
+        },
+        {
+          "edge_index": 16,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "water"
+        }
+      ],
+      "text_step_ids": [
+        "S008",
+        "S009",
+        "S010",
+        "S011",
+        "S012",
+        "S013",
+        "S014",
+        "S015"
+      ]
+    },
+    {
+      "index": 12,
+      "container": "none",
+      "name": "garlic",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "aromatic",
+      "previous": [],
+      "text_step_ids": [
+        "S008"
+      ]
+    },
+    {
+      "index": 13,
+      "container": "none",
+      "name": "chili_pepper",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "spicy",
+      "previous": [],
+      "text_step_ids": [
+        "S009"
+      ]
+    },
+    {
+      "index": 14,
+      "container": "none",
+      "name": "light_soy",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [],
+      "text_step_ids": [
+        "S010"
+      ]
+    },
+    {
+      "index": 15,
+      "container": "none",
+      "name": "vinegar",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "sour",
+      "previous": [],
+      "text_step_ids": [
+        "S011"
+      ]
+    },
+    {
+      "index": 16,
+      "container": "none",
+      "name": "sesame_oil",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S012"
+      ]
+    },
+    {
+      "index": 17,
+      "container": "none",
+      "name": "oyster_sauce",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "umami",
+      "previous": [],
+      "text_step_ids": [
+        "S013"
+      ]
+    },
+    {
+      "index": 18,
+      "container": "none",
+      "name": "water",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "cooked",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S014"
+      ]
+    },
+    {
+      "index": 19,
+      "container": "none",
+      "name": "sauce",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 17,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "scallion"
+        }
+      ],
+      "text_step_ids": [
+        "S015"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "index": 1,
+      "action": "add",
+      "type": "prep",
+      "node1": 1,
+      "node2": 3,
+      "text_step_ids": [
+        "S001"
+      ]
+    },
+    {
+      "index": 2,
+      "action": "add",
+      "type": "prep",
+      "node1": 2,
+      "node2": 3,
+      "text_step_ids": [
+        "S002"
+      ]
+    },
+    {
+      "index": 3,
+      "action": "add",
+      "type": "prep",
+      "node1": 4,
+      "node2": 3,
+      "text_step_ids": [
+        "S003"
+      ]
+    },
+    {
+      "index": 4,
+      "action": "add",
+      "type": "prep",
+      "node1": 5,
+      "node2": 3,
+      "text_step_ids": [
+        "S004"
+      ]
+    },
+    {
+      "index": 5,
+      "action": "drizzle",
+      "type": "prep",
+      "node1": 3,
+      "node2": 6,
+      "text_step_ids": [
+        "S004"
+      ]
+    },
+    {
+      "index": 6,
+      "action": "simmer",
+      "type": "heat",
+      "node1": 6,
+      "node2": 7,
+      "text_step_ids": [
+        "S005"
+      ],
+      "duration": "6 minutes"
+    },
+    {
+      "index": 7,
+      "action": "add",
+      "type": "prep",
+      "node1": 8,
+      "node2": 7,
+      "text_step_ids": [
+        "S006"
+      ]
+    },
+    {
+      "index": 8,
+      "action": "ice",
+      "type": "cold",
+      "node1": 7,
+      "node2": 9,
+      "text_step_ids": [
+        "S006"
+      ]
+    },
+    {
+      "index": 9,
+      "action": "prepare",
+      "type": "prep",
+      "node1": 9,
+      "node2": 10,
+      "text_step_ids": [
+        "S007"
+      ]
+    },
+    {
+      "index": 10,
+      "action": "add",
+      "type": "prep",
+      "node1": 12,
+      "node2": 11,
+      "text_step_ids": [
+        "S008"
+      ]
+    },
+    {
+      "index": 11,
+      "action": "add",
+      "type": "prep",
+      "node1": 13,
+      "node2": 11,
+      "text_step_ids": [
+        "S009"
+      ]
+    },
+    {
+      "index": 12,
+      "action": "add",
+      "type": "prep",
+      "node1": 14,
+      "node2": 11,
+      "text_step_ids": [
+        "S010"
+      ]
+    },
+    {
+      "index": 13,
+      "action": "add",
+      "type": "prep",
+      "node1": 15,
+      "node2": 11,
+      "text_step_ids": [
+        "S011"
+      ]
+    },
+    {
+      "index": 14,
+      "action": "add",
+      "type": "prep",
+      "node1": 16,
+      "node2": 11,
+      "text_step_ids": [
+        "S012"
+      ]
+    },
+    {
+      "index": 15,
+      "action": "add",
+      "type": "prep",
+      "node1": 17,
+      "node2": 11,
+      "text_step_ids": [
+        "S013"
+      ]
+    },
+    {
+      "index": 16,
+      "action": "add",
+      "type": "prep",
+      "node1": 18,
+      "node2": 11,
+      "text_step_ids": [
+        "S014"
+      ]
+    },
+    {
+      "index": 17,
+      "action": "stir",
+      "type": "prep",
+      "node1": 11,
+      "node2": 19,
+      "text_step_ids": [
+        "S015"
+      ]
+    }
+  ]
+}

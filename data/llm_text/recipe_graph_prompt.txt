@@ -22,7 +22,7 @@ PROCESS and ADD have fundamentally different node semantics.
 
 PROCESS:
 
-Every PROCESS action ALWAYS creates exactly ONE NEW output node.
+Every PROCESS action ALWAYS creates exactly ONE NEW output node, except split creates one NEW output per portion/component.
 
     CURRENT STATE
         |
@@ -50,7 +50,7 @@ ONE ATOMIC STEP does NOT necessarily imply ONE NEW NODE.
 More precisely:
 
 PROCESS atomic step
-→ exactly ONE NEW output node
+→ exactly ONE NEW output node, except split creates one NEW output per portion/component
 
 ADD atomic step
 → ZERO new nodes
@@ -162,9 +162,9 @@ egg_white_paste_13 --add--> yolk_paste_9
 
 yolk_paste_9 --fold--> cake_paste_14
 
-cake_paste_14 --add--> mold_15
+cake_paste_14 --add--> oven_15
 
-mold_15 --bake--> cake_16
+oven_15 --bake--> cake_base_16
 
 
 IMPORTANT OBSERVATIONS:
@@ -267,6 +267,112 @@ Atomic steps:
 
 
 Do NOT represent multiple independent actions as one atomic step.
+
+The supplied recipe text is Chinese. Before any graph construction:
+
+1. Split the Chinese instructions into atomic source steps in procedural order.
+2. Preserve the exact Chinese span for each step as `text`.
+3. Translate every atomic Chinese step into English as `text_en`.
+4. Use the English step to perform entity/action normalization and graph
+   analysis, while using the Chinese step only as the authoritative source
+   span for offsets and highlighting.
+
+Complete this bilingual atomic-step list before creating any node or edge.
+Do not postpone translation until serialization, and do not translate only
+the ingredient or action label. `text_en` must be a complete English cooking
+instruction corresponding to the Chinese atomic step.
+
+
+==================================================
+0.1.1 PERSISTENT SOURCE-TEXT ALIGNMENT
+==================================================
+
+The top-level JSON object MUST contain:
+
+{
+  "recipe_id": "exact RECIPE_ID supplied by the user",
+  "source_text": "exact original procedural text",
+  "text_steps": [],
+  "nodes": [],
+  "edges": []
+}
+
+Copy `recipe_id` exactly from the RECIPE_ID field in the user input. Do not
+omit, translate, normalize, shorten, or infer it from the recipe text.
+
+The output must preserve enough information to highlight the exact original
+recipe text when a graph node or action is selected later.
+
+Serialize the complete original procedural text verbatim as top-level
+"source_text". Do not translate, paraphrase, normalize, reorder, or omit
+source wording in this field.
+
+Serialize atomic steps as a top-level "text_steps" array. Give each step a
+stable, recipe-local ID in procedural order: S001, S002, and so on. An ID
+must not depend on node or edge indices.
+
+Each text_steps entry has this shape:
+
+{
+  "id": "S001",
+  "text": "exact contiguous substring from source_text",
+  "text_en": "faithful English translation of this atomic step",
+  "start_char": 0,
+  "end_char": 18,
+  "node_indices": [1, 2],
+  "edge_indices": [1],
+  "node_action_pairs": [
+    {"node_index": 1, "edge_index": 1, "role": "input"},
+    {"node_index": 2, "edge_index": 1, "role": "output"}
+  ]
+}
+
+Offsets are zero-based Unicode code-point offsets into source_text, with
+start_char inclusive and end_char exclusive. The required invariant is:
+
+source_text[start_char:end_char] == text
+
+Also serialize `text_en` for every text step. When `text` contains Chinese,
+translate the complete atomic step into clear, natural English while
+preserving its ingredients, action, quantities, temperatures, durations,
+conditions, and qualifiers. Do not summarize, omit details, or add culinary
+inferences. Keep `text` in the original language so its source offsets remain
+valid. If the source step is already English, copy it into `text_en` unchanged.
+`text_en` is display text only and is not used for source offsets.
+
+Use the exact source span for each atomic step, including the original
+ingredient and action wording. When a sentence contains multiple actions,
+create a separate text_steps entry for each atomic action; spans may overlap
+when the same original words are needed to identify more than one action.
+Never fabricate a source phrase for an implicit graph operation.
+
+node_indices and edge_indices list every graph node and edge that represents
+or is required to realize that source step. node_action_pairs explicitly
+associate an entity/state node with the action edge for that step. The role
+is one of "input", "output", "source", "receiver", "environment", or
+"context". A step may have multiple pairs, nodes, or edges. A node or edge
+may be referenced by more than one step when the source text warrants it.
+
+Also add "text_step_ids": ["S001"] to every referenced node and edge. These
+reverse references and the text_steps forward references must agree exactly.
+For an ADD step, pair each relevant source/receiver node with its ADD edge;
+ADD still creates no node. For a PROCESS step, pair its input and each output
+node with the PROCESS edge. For an explicit split, associate every split
+output with the same step and split edge.
+
+When a step implicitly requires a new cooking-stage/container node because
+the cooking environment changes, include that container node in the same
+step's node_indices and text_step_ids, and include the structural edge that
+introduces it in edge_indices and text_step_ids. Also pair the environment
+node with the source-described cooking action using role "environment".
+This is an alignment annotation only: it does NOT turn an implicit container
+transition into an extra text atomic step or invent a source action. Preserve
+all existing container, PROCESS, and ADD semantics.
+
+Initial ingredient nodes explicitly used by a source step must also reference
+that step. Do not assign a step ID to an unrelated node or edge. Before
+serialization, validate every ID, node index, edge index, pair, and source
+span in both directions.
 
 
 ==================================================
@@ -371,6 +477,60 @@ rock sugar
 Do NOT invent actions unsupported by the source text.
 
 Do NOT infer additional cooking actions during atomic decomposition.
+
+==================================================
+ENTITY NAME IDENTITY AND CROSS-RECIPE CONSISTENCY — HARD CONSTRAINT
+==================================================
+
+The name field identifies WHAT the ingredient or intermediate IS, not its
+processing history. Use a basic canonical lowercase snake_case name.
+If an operation leaves the ingredient's identity unchanged, keep exactly
+the same name on the new output node, even when its state changes.
+
+Examples of unchanged identity:
+- pork remains pork after cutting, frying, cooking, or seasoning;
+- fish remains fish after baking or seasoning;
+- yolk remains yolk while it is still yolk;
+- cake remains cake when an action does not create a different product.
+
+Do not add preparation, temperature, seasoning, doneness, vessel, or step
+qualifiers to names. Do not output fried_pork, cooked_pork, seasoned_fish,
+pork_slice, or baked_cake as names. Put physical form and doneness in
+physical_state and chemical_state, the environment in container, and the
+operation on the edge. A new PROCESS node does not require a new name.
+
+Change the name only when the operation fundamentally produces a different
+ingredient/component/intermediate. Use the canonical name of that product,
+not an action-prefixed description of the old ingredient. For example:
+
+flour --add--> yolk_1
+yolk_1 --stir--> yolk_paste_2
+
+The ADD retains the existing yolk node and its name. When stirring forms
+the new paste, the fresh PROCESS output is named yolk_paste.
+
+cake_paste_1 --add--> oven_2
+oven_2 --bake--> cake_base_3
+
+Here baking transforms cake_paste into cake_base; do not call the output
+baked_cake_paste or baked_cake. Infer the new identity from the complete
+recipe context, not merely from the presence of an action or added flour.
+Do not rename an earlier snapshot retrospectively or name an intermediate
+before the recipe produces it. Do not invent a new final name solely to
+mark completion. Ingredient identity is distinct from the main/aux role.
+
+Use the SAME canonical label for the same ingredient or intermediate
+across recipes. Normalize equivalent mentions consistently; do not invent
+recipe-specific synonyms, dish prefixes, or alternate spellings for an
+existing identity. Prefer pork, fish, yolk, yolk_paste, cake_paste, and
+cake_base when those identities apply. Preserve genuinely different
+identities; do not force every paste or sauce into the same generic label.
+
+Names are not node IDs. Distinct snapshots and repeated-use source nodes
+may share the same name and must retain distinct indices. In ALL topology
+examples, numeric or letter suffixes such as pork_1, pork_A, or yolk_2 are
+node references ONLY; serialize name="pork" or name="yolk" respectively.
+Canonical identity terms such as yolk_paste and cake_base are actual names.
 
 ==================================================
 0.5.1 ACTION NAME VOCABULARY — HARD CONSTRAINT
@@ -607,7 +767,7 @@ stir
 wash
 whisk
 → PROCESS
-→ each creates exactly ONE new output node
+→ each creates exactly ONE new output node, except split creates one NEW output per portion/component
 
 
 This distinction MUST be applied before graph construction.
@@ -617,6 +777,9 @@ This distinction MUST be applied before graph construction.
 ==================================================
 
 During atomic-step extraction, do NOT construct graph nodes or edges yet.
+
+First form each exact Chinese atomic source span and its complete English
+translation. Use that English translation for the semantic analysis below.
 
 At this stage, identify only:
 
@@ -634,7 +797,6 @@ Do NOT assign:
 
 - node indices;
 - edge indices;
-- previous;
 - final graph topology.
 
 
@@ -957,7 +1119,7 @@ ADD:
     node count change = 0
 
 PROCESS:
-    node count change = +1
+    node count change = +1 (split: +number of output portions/components)
 
 ==================================================
 0.8 STATE RECONSTRUCTION
@@ -973,7 +1135,7 @@ INPUT STATE
 The output state becomes the current state for subsequent references to
 the same entity or process branch.
 
-Repeated references must resolve to the latest current state.
+Repeated references to the same continuing portion must resolve to its latest current state. Repeated ADD sources follow section 1.1.
 
 
 Example:
@@ -997,7 +1159,36 @@ Never restart later actions from the original pork state.
 0.8.1 HEAT ACTION AND COOKING-ENVIRONMENT ANALYSIS
 ==================================================
 
-Every heat-related atomic action MUST resolve its cooking environment.
+Every heat-related atomic action MUST resolve its cooking environment,
+even when the recipe does not explicitly name the vessel or appliance.
+
+The container represents the HEAT-RELATED ENVIRONMENT, not every physical
+vessel mentioned in the recipe. Use these canonical mappings:
+
+fry -> wok_pot
+bake -> oven
+
+Resolve other heat actions from the action and recipe context using the
+allowed heat-environment vocabulary. Do not invent a heat action merely
+to justify a container. Heating-environment inference belongs to graph
+construction; it does not add a text-derived atomic action.
+
+Ignore non-heat vessels such as bowl, mold, plate/platter, serving dish,
+and storage container as container nodes and container attribute values.
+A baking mold is not the baking environment: use oven for bake, even when
+the food is held in a mold. Do not create a mold node inside an oven node.
+
+Keep meaningful food actions such as mixing, shaping, assembly, and
+finishing, while omitting the incidental vessel. A transfer whose only
+purpose is placement in an ignored non-heat vessel does not require a
+container node or an ADD edge to that vessel. Do not invent a replacement
+food action for such a vessel-only transfer. The action label mold may
+still describe an explicit shaping operation; it is not a container value.
+
+Use container="none" when the food is outside a heat-related environment.
+During preparation in the environment of a later explicit heat action,
+the corresponding heat container may already exist. Maintain the existing
+flow-carrier and environment-continuity rules within that environment.
 
 For each heat action determine:
 
@@ -1014,7 +1205,7 @@ For each heat action determine:
 Allowed cooking environments are:
 
 deep_pot
-mold
+oven
 sim_pot
 wok_pot
 
@@ -1025,7 +1216,7 @@ For example:
 
 wok_pot != sim_pot
 
-sim_pot != mold
+sim_pot != oven
 
 
 ==================================================
@@ -1064,12 +1255,103 @@ DIFFERENT cooking environment
 → create new container node
 
 
+IMPORTANT: "same cooking environment" means the same CONTINUOUS ACTIVE
+COOKING EPISODE on the same process branch. It does NOT mean every use of
+the same physical vessel or every occurrence of the same container category
+in the recipe.
+
+If a processed ingredient is removed from the heat environment and reserved
+(for example, "remove and set aside"), that cooking episode and its container
+flow have ended for that ingredient branch. If another ingredient is then
+cooked independently in the same physical wok or oil, introduce a NEW
+container occurrence of the same canonical category for the new branch.
+
+Removal or "set aside" wording is NOT required to recognize independent
+branches. Track the CURRENT ENTITY processed by every heat action. If two
+different entities receive separate PROCESS actions before either entity is
+explicitly added to the other, they remain separate branches and use distinct
+branch-local container occurrences, even when the same physical pan, oil, or
+container category is implied.
+
+A container occurrence belongs to one current entity or one already-established
+mixture. Do not give one container occurrence multiple outgoing PROCESS edges
+that independently produce different entities. Reuse that occurrence only
+after the text has explicitly combined those entities, or while continuing to
+process the same entity or established mixture.
+
+OUTPUT-LINEAGE RULE FOR CONTAINER REUSE:
+
+One container occurrence may serve only ONE continuous output lineage. Look at
+what each operation after entering the container will produce. If the operations
+produce different new nodes that belong to different branches, do NOT reuse the
+same container occurrence. Create one same-category container occurrence in
+each branch before applying its operation.
+
+This rule also applies when the two paths do not have symmetric shapes. For
+example, sugar may be ADDed to a pot so that the pot remains the current
+receiving node, while pork is ADDed to a cooking environment and `fry` creates
+a new pork node. The pot-current path and the new-pork-output path are different
+output lineages. They cannot use the same pot node. Create a sugar-branch pot
+and a pork-branch pot. A shared physical pot or consecutive textual steps do
+not override this graph rule.
+
+Reuse is allowed only when the next actions continue a single established
+entity/mixture lineage and do not create separate branch outputs. If separate
+new output nodes will exist after the operations, duplicate the container
+occurrence before those operations, not after them, and never recover the
+branches with an inferred split.
+
+Do not connect several independently cooked ingredients to one persistent
+container and then split the container output. The text did not split one
+mixture; it prepared separate branches.
+
+Independent cooking episodes in one physical wok:
+
+egg --add--> wok_pot_egg
+wok_pot_egg --fry--> egg
+
+green_pepper --add--> wok_pot_pepper
+wok_pot_pepper --fry--> green_pepper
+
+These are two independent branches and two distinct wok_pot nodes. There is
+NO split edge between them and NO shared wok_pot node. Reusing residual oil
+or saying "in the same pot" does not merge the food branches.
+
+Likewise, pork fried and removed, eggs fried and removed, peppers fried and
+removed, and sugar melted separately begin as separate pork, egg, pepper,
+and sugar branches. Merge them only at the later textual step where one
+prepared branch is actually added to another active branch.
+
+For example, when the text explicitly describes caramelizing/reducing sugar
+and searing pork as separate preparations before the pork is added to the
+sugar, generate two branches:
+
+sugar --add--> wok_pot_sugar
+wok_pot_sugar --reduce--> sugar
+
+pork --add--> wok_pot_pork
+wok_pot_pork --sear--> pork
+
+Then connect one prepared branch to the other with ADD only at the explicit
+combination step. Do NOT generate one shared wok_pot with both
+`wok_pot --reduce--> sugar` and `wok_pot --sear--> pork`, and do NOT recover
+the two foods by splitting that shared container.
+
+Represent only actions stated by the source text. This example does not
+authorize inventing `sear` for pork when the recipe only says to add untreated
+or previously prepared pork to the caramelized sugar.
+
+This exception does not violate the ADD rule: each new container occurrence
+is introduced because a new independent HEAT-PROCESSING EPISODE begins, not
+because ADD creates a node. The subsequent ADD still creates zero nodes.
+
+
 ==================================================
 0.8.1.2 HEAT ACTIONS REQUIRE ENVIRONMENT RESOLUTION
 ==================================================
 
-A heat action that requires a represented cooking environment must not
-bypass that environment.
+Every heat action requires resolution of its heat-related environment.
+Do not bypass that environment when entering it for processing.
 
 Do NOT generate:
 
@@ -1117,10 +1399,11 @@ new container.
 1. ENTITY CONTINUITY AND CURRENT-STATE TRACKING
 ==================================================
 
-Repeated references to the same entity must resolve to its CURRENT state.
+Repeated references to the same continuing portion must resolve to its CURRENT state. A later same-name ADD source follows section 1.1 instead.
 
-Do NOT create a disconnected duplicate merely because the entity is
-mentioned again.
+Do NOT create a disconnected duplicate merely because a continuing entity is
+mentioned again. A distinct repeated-use source portion under section 1.1
+is a legitimate node, not an invalid duplicate.
 
 Example:
 
@@ -1141,6 +1424,85 @@ pork_1
 
 The later actions operate on the current pork state.
 
+
+==================================================
+1.1 ADD SOURCE PORTIONS AND OUTGOING LIMIT — HARD CONSTRAINT
+==================================================
+
+For every node v:
+
+count(edges where node1 == v.index and action == "add") <= 1.
+
+Count outgoing ADD edges only. This is NOT a limit on incoming ADD edges,
+PROCESS edges, or split outputs. Never add the same source node directly
+to two or more destinations, even when its name and attributes match.
+The limit is a ceiling, not permission to reuse an already-used source
+for a later repeated mention.
+
+When a same-name ingredient appears again as a source to be added, and the
+previous same-name source node has already supplied an ADD edge, allocate
+a fresh source node with the SAME canonical name and a distinct index.
+Do not reuse the earlier source node for that later occurrence.
+Do not suffix the serialized name with portion numbers.
+
+Resolve source portions BEFORE constructing their ADD edges. This does
+not change ADD semantics: ADD itself creates no output node and no copy
+of the receiving state. The new source represents a separate supply or
+portion, not a new receiver. Track portions internally, without adding
+JSON fields. Ordinary references continuing one processing branch still
+use that branch's current state.
+
+Example: sugar is added to yolk, then sugar is added to egg white.
+
+sugar_1 --add--> current_yolk
+sugar_2 --add--> current_egg_white
+
+sugar_1 and sugar_2 both serialize name="sugar", with different indices.
+They represent separate ingredient portions. Initial source portions have no
+incoming edges. Do not copy another portion's incoming history.
+
+Use split ONLY when the recipe text explicitly describes a splitting or
+portioning action. Repeated uses, multiple destinations, and the outgoing
+ADD limit do NOT justify inferring a split action.
+
+Example: the text explicitly says to divide a prepared source into three
+portions and add each portion to a different receiver:
+
+prepared_source --split--> portion_1
+prepared_source --split--> portion_2
+prepared_source --split--> portion_3
+portion_1 --add--> receiver_A
+portion_2 --add--> receiver_B
+portion_3 --add--> receiver_C
+
+These three split edges belong to ONE explicit split operation with three
+fresh outputs. The portion nodes may all have the same canonical name.
+Preserve their preparation ancestry through these explicit split edges.
+
+If the text does NOT explicitly describe splitting, create a fresh source
+node with the same canonical name for each later ADD occurrence instead:
+
+source_1 --add--> receiver_A
+source_2 --add--> receiver_B
+source_3 --add--> receiver_C
+
+All three source nodes serialize the SAME name with distinct indices.
+This rule also applies to repeated mentions of a prepared intermediate:
+do not infer split or invent preparation actions to connect the new source
+to the previously used node. Reconstruct its state from the recipe context.
+An independently introduced source node has no incoming edges; never copy the
+previously used node's provenance by inventing incoming edges.
+Creating these source nodes does not create receiving-state copies or
+change the rule that ADD itself creates no output node.
+
+INVALID:
+source --add--> receiver_A
+source --add--> receiver_B
+source --add--> receiver_C
+
+Do not merge distinct source portions merely because their names and state
+attributes are identical. Node cleanup must preserve these legitimate
+initial portions and split outputs.
 
 ==================================================
 2. NODE SEMANTICS
@@ -1171,7 +1533,7 @@ Ingredient/intermediate node:
   "physical_state": string,
   "chemical_state": string,
   "flavor": string,
-  "previous": []
+  "text_step_ids": ["S001"]
 }
 
 
@@ -1183,7 +1545,7 @@ Container node:
   "name": string,
   "type": "container",
   "flavor": "none",
-  "previous": []
+  "text_step_ids": ["S001"]
 }
 
 
@@ -1215,7 +1577,7 @@ for EVERY process edge.
 
 Example 1:
 
-pork(raw, solid)
+pork(raw, whole)
 → cut
 → pork(raw, chunk)
 
@@ -1564,7 +1926,7 @@ wok_pot_A --heat--> wok_pot_B
 
 pork --add--> wok_pot_B
 
-wok_pot_B --fry--> pork_cooked
+wok_pot_B --fry--> pork_B
 
 
 The pork ADD does NOT create wok_pot_C.
@@ -1864,8 +2226,22 @@ Schema:
   "action": string,
   "type": string,
   "node1": source_node,
-  "node2": destination_node
+  "node2": destination_node,
+  "duration": "50 minutes",
+  "heat_level": "low",
+  "text_step_ids": ["S001"]
 }
+
+
+`heat_level` is OPTIONAL and applies only to PROCESS edges whose type is
+"heat". See section 16.2. Omit the key on every other edge.
+
+`duration` is OPTIONAL. Include it when the source text gives an explicit
+numeric elapsed-time quantity with a time unit for this action. Approximate
+numeric values and numeric ranges are valid. Omit the key when there is no
+numeric duration.
+Always normalize the `duration` value to English, including its qualifier and
+time unit, even when the source recipe expresses the duration in Chinese.
 
 
 HARD CONSTRAINT:
@@ -1907,8 +2283,15 @@ Schema:
   "action": "add",
   "type": "prep",
   "node1": source_node,
-  "node2": existing_receiving_node
+  "node2": existing_receiving_node,
+  "duration": "2 minutes",
+  "text_step_ids": ["S001"]
 }
+
+
+`duration` is OPTIONAL for ADD as well. Most ADD actions have no duration and
+must omit the key. Include it only if the source gives a numeric elapsed-time
+quantity for the adding action itself, such as adding gradually over 2 minutes.
 
 
 ABSOLUTE RULE:
@@ -2078,20 +2461,20 @@ CONTAINER --PROCESS--> NEW_STATE
 
 Example:
 
-potato_slice --add--> wok_pot
-wok_pot --fry--> potato_cooked
+potato_A --add--> wok_pot
+wok_pot --fry--> potato_B
 
 
 Example:
 
-eggplant_slice --add--> wok_pot
-wok_pot --fry--> eggplant_cooked
+eggplant_A --add--> wok_pot
+wok_pot --fry--> eggplant_B
 
 
 Example:
 
 tomato_meat_sauce --add--> sim_pot
-sim_pot --simmer--> tomato_meat_sauce_cooked
+sim_pot --simmer--> tomato_meat_sauce_B
 
 
 Example:
@@ -2102,10 +2485,10 @@ wok_pot_A --heat--> wok_pot_B
 
 INVALID:
 
-potato_slice
+potato_A
 
 
-wok_pot --fry--> potato_cooked
+wok_pot --fry--> potato_B
 
 
 INVALID:
@@ -2113,7 +2496,7 @@ INVALID:
 tomato_meat_sauce
 
 
-sim_pot --simmer--> tomato_meat_sauce_cooked
+sim_pot --simmer--> tomato_meat_sauce_B
 
 
 The container PROCESS must not start as a disconnected branch.
@@ -2227,17 +2610,13 @@ white_sauce
 
 may all point to:
 
-moussaka(raw, solid)
+moussaka(raw, whole)
 
 
 Then:
 
-moussaka(raw, solid)
-        |
-       bake
-        |
-        v
-moussaka(cooked, solid)
+moussaka(raw, whole) --add--> oven
+oven --bake--> moussaka(cooked, whole)
 
 
 Because BAKE is PROCESS:
@@ -2265,7 +2644,7 @@ PROCESS
 PROCESS:
 
 - represents an explicit procedural transition;
-- ALWAYS creates exactly ONE NEW output node;
+- ALWAYS creates exactly ONE NEW output node, except split creates one NEW output per portion/component;
 - updates CURRENT_STATE;
 - requires node1 != node2.
 
@@ -2285,7 +2664,7 @@ S != T
 
 Node count effect:
 
-+1
++1 for non-split PROCESS; +number of output portions/components for split
 
 
 ==================================================
@@ -2329,7 +2708,7 @@ Never generate a node whose only justification is:
 "an ingredient was added."
 
 
-If a node exists only because an ADD occurred:
+If a receiving-state copy exists only because an ADD occurred (not a legitimate source portion under section 1.1):
 
 DELETE THAT NODE
 
@@ -2340,16 +2719,25 @@ and redirect the ADD edge to the prior current receiving state.
 10. CONTAINER RULES
 ==================================================
 
+Only heat-related environments are represented as containers (section 0.8.1).
+Ignore non-heat vessels; do not create bowl, mold, or plate nodes.
+
 Allowed container values:
 
 deep_pot
-mold
+oven
 sim_pot
 wok_pot
 none
 
 
-A new container node is required when the cooking environment changes.
+A new container node is required when entering a different heat-related environment; movement to an ignored non-heat vessel does not create one.
+
+A new container occurrence is ALSO required whenever a different entity begins
+an independent cooking episode before it has been explicitly combined with the
+current entity. "Removed/set aside" is one signal of this boundary, but it is
+not required. Container identity represents the active procedural branch, not
+durable physical ownership of the vessel.
 
 
 Examples:
@@ -2359,14 +2747,22 @@ wok_pot → sim_pot
 CREATE NEW sim_pot
 
 
-sim_pot → mold
+sim_pot → oven
 
-CREATE NEW mold
+CREATE NEW oven
 
 
 wok_pot → wok_pot
 
 DO NOT create a new container merely because another action occurs.
+
+This reuse applies only inside one continuous active branch for the same current
+entity or an already-established mixture. If the first food was removed and
+reserved before the next food entered the wok, the next food uses a new
+wok_pot occurrence. The same separation applies without removal wording when
+different entities undergo separate PROCESS actions before their explicit
+combination. Never model independent heat-processing episodes as ADDs into one
+wok followed by split outputs.
 
 
 However:
@@ -2393,21 +2789,56 @@ This is required because EVERY PROCESS action creates a new output node.
 
 Allowed values:
 
-solid
+whole
 chunk
 slice
 shred
-dice
-paste
 powder
 liquid
+batter
+paste
+mash
+dough
+
+
+Use only these LEAF categories in JSON. `solid` and `solid-liquid mixture`
+are conceptual parent groups for reasoning and must not be serialized as
+physical_state values.
+
+Solid forms:
+
+- whole: an intact or uncut solid item / one whole piece;
+- chunk: cut blocks, cubes, dice, or comparable discrete chunks;
+- slice: thin flat slices;
+- shred: thin strips or shreds;
+- powder: dry fine particles.
+
+Pure fluid:
+
+- liquid: a pourable fluid without a meaningful suspended-solid mixture.
+
+Solid-liquid mixture forms, classified by consistency and structure:
+
+- batter: a flowable, pourable mixture such as thin cake or pancake batter;
+- paste: a thick smooth or semi-smooth mixture that is spreadable and holds
+  more shape than batter, but is not a kneadable dough;
+- mash: a coarse crushed or mashed mixture with noticeable particles;
+- dough: a cohesive, kneadable mass.
+
+Choose the most specific leaf category supported by the recipe. Do not create
+any subtype field. In particular, map `dice` and `cube` to `chunk`; do not emit
+them as additional physical_state categories.
 
 
 Never use:
 
+solid
+solid-liquid mixture
 pieces
 small pieces
 cut
+dice
+cube
 
 
 ==================================================
@@ -2434,6 +2865,52 @@ same.
 
 Flavor represents the entity's ORIGINAL or inherent functional flavor.
 
+FIXED INGREDIENT FLAVOR VOCABULARY — HARD CONSTRAINT
+
+For every ingredient listed below, use the specified flavor exactly. This
+fixed vocabulary overrides general inference and culinary assumptions:
+
+- scallion: aromatic
+- garlic: aromatic
+- ginger: deodorizing
+- cooking_wine: deodorizing
+- sugar: sweet
+- honey: sweet
+- cinnamon: spicing
+- bay_leaf: spicing
+- star_anise: spicing
+- thirteen_powder: spicing
+- light_soy: savory
+- dark_soy: sweet
+- salt: savory
+- oyster_sauce: umami
+- chicken_powder: umami
+- red_tofu: spicy
+- water: none
+- oil: none
+- butter: none
+- red_wine: deodorizing
+- mint: deodorizing
+- nutmeg: spicing
+- cheese: savory
+- soup: umami
+- black_pepper: umami
+- beef_sauce: umami
+- paprika: spicy
+- lemon_juice: sour
+
+Normalize spaces and hyphens to lowercase snake_case before lookup. Common
+name variants that clearly denote the same listed ingredient must inherit the
+listed value; for example, `cooking wine` resolves to `cooking_wine`, `light
+soy sauce` resolves to `light_soy`, `dark soy sauce` resolves to `dark_soy`,
+`chicken powder` resolves to `chicken_powder`, `red tofu` resolves to
+`red_tofu`, and `thirteen powder` resolves to `thirteen_powder`.
+
+Only when an ingredient is absent from this vocabulary may its single best
+ORIGINAL/inherent flavor be inferred from the allowed values. If no meaningful
+flavor can be inferred, use `none`. Never replace a listed value with an
+inferred value. In particular, `dark_soy` is `sweet` in this project vocabulary.
+
 Allowed values:
 
 aroma
@@ -2443,7 +2920,7 @@ none
 salty
 savory
 sour
-spicied
+spicing
 spicy
 sweet
 umami
@@ -2563,52 +3040,171 @@ NO PROCESS SELF-LOOPS ARE ALLOWED.
 
 
 ==================================================
-16. PREVIOUS = PROVENANCE
+16. PREVIOUS IS GENERATED AFTER MODEL OUTPUT
 ==================================================
 
-Construct "previous" ONLY AFTER:
-
-- all nodes are finalized;
-- all edges are finalized;
-- all node indices are finalized;
-- all edge indices are finalized.
-
-
-Do NOT assign provisional previous.edge_index values during earlier
-reasoning.
+Do NOT output a `previous` field on any node. The generation script derives
+complete provenance deterministically from the finalized nodes and edges after
+the model response. Concentrate on producing correct topology and edge order.
 
 
 ==================================================
-16.1 PREVIOUS–EDGE CONSISTENCY — HARD CONSTRAINT
+16.1 ACTION DURATION — EXPLICIT NUMERIC TIME ONLY
 ==================================================
 
-For every previous entry:
+Duration belongs to the ACTION EDGE, never to a node.
+
+For every PROCESS or ADD action, inspect its exact source span. Add duration
+when the source states an explicit numeric elapsed-time quantity with a time
+unit. Exact values, approximate numeric values, and numeric ranges all qualify.
+Then add an edge-level string field:
 
 {
-  "edge_index": E,
-  "action": A,
-  "type": T,
-  "source_ingredient": S
+  "duration": "20 minutes"
 }
 
+Valid numeric durations:
 
-there MUST exist exactly one edge:
+- "for 30 seconds" -> "30 seconds"
+- "for 50 minutes" -> "50 minutes"
+- "about 50 minutes" -> "about 50 minutes"
+- "10 to 15 minutes" -> "10-15 minutes"
+- "for 1 hour" -> "1 hour"
+- "for 1 hour 30 minutes" -> "1 hour 30 minutes"
 
-{
-  "index": E,
-  "action": A,
-  "type": T,
-  ...
-}
+Do NOT add duration when no numeric elapsed-time quantity is given, including:
 
+- "a few minutes" or "briefly";
+- "overnight";
+- "until golden", "until fragrant", "until cooked through", or "until
+  reduced".
 
-Verify:
+Do not invent a number or infer a duration from culinary knowledge. Preserve
+numeric qualifiers and both endpoints of a range; do not round or choose only
+one endpoint. If no numeric elapsed time appears, omit the field.
 
-previous.edge_index == edge.index
+Attach the duration only to the action whose wording it modifies. Do not copy
+it to adjacent ADD, environment-introduction, or PROCESS edges. If one sentence
+contains several atomic actions, resolve the grammatical scope of the time
+expression before assigning it.
 
-previous.action == edge.action
+If no explicit duration applies, OMIT `duration` entirely. Never output an
+empty string, `null`, `none`, zero, or a guessed value.
 
-previous.type == edge.type
+The action edge is the authoritative location for duration.
+
+==================================================
+16.2 HEAT LEVEL - STATED FIRE STRENGTH ONLY
+==================================================
+
+Heat level belongs to the ACTION EDGE, never to a node. Put `heat_level` only on
+PROCESS edges whose type is "heat" (fry, stir-fry, simmer, boil, stew, steam,
+bake, roast and similar). Never put it on ADD edges, split edges, or PROCESS
+edges of any other type.
+
+Allowed levels, exactly: "low", "middle", "high".
+
+Output forms:
+
+- One level for the action: a string.
+
+  "heat_level": "low"
+
+- Several levels within the SAME action (one action verb whose wording changes
+  the fire, for example "simmer on low heat, then turn to high to reduce"): an
+  object listing the levels in the order they occur, each value being the
+  fraction of that action spent at that level. The values are numbers between 0
+  and 1, rounded to two decimals, and they sum to exactly 1.0.
+
+  "heat_level": {"low": 0.2, "high": 0.8}
+
+A level that appears twice in one action is listed once with the combined share.
+
+A. Literal wording decides first. Use what the text says:
+
+- low: low heat, gentle heat, lowest heat, and the Chinese words for small,
+  gentle or minimal fire (小火, 文火, 慢火, 微火, 最小火);
+- middle: medium heat, moderate heat, and 中火;
+- high: high heat, strong heat, full heat, and the Chinese words for big, fierce
+  or urgent fire (大火, 旺火, 猛火, 急火, 最大火).
+
+Combined wording is assigned to the nearer of the three levels: 中小火 or
+medium-low -> "low"; 中大火 or medium-high -> "high".
+
+B. If there is no level word but there is a number, convert it with these
+thresholds. Convert Fahrenheit to Celsius first. A range uses its midpoint.
+
+- Oven or dry air (bake, roast, air-fry): below 150 C (300 F) -> "low";
+  150 to 200 C (300 to 400 F) -> "middle"; above 200 C (400 F) -> "high".
+- Oil, pan or stove-top surface, grill: below 130 C (265 F) -> "low";
+  130 to 180 C (265 to 355 F) -> "middle"; above 180 C -> "high". Chinese oil
+  grades: one to four tenths hot (一到四成热) -> "low"; five to six tenths
+  (五到六成热) -> "middle"; seven tenths and above (七成热及以上) -> "high".
+- Liquid (water, stock, milk, syrup, sauce): below 80 C (175 F) -> "low";
+  80 to 95 C (175 to 205 F) -> "middle"; above 95 C -> "high".
+- Power or percentage settings: up to 33 percent -> "low"; 34 to 66 percent ->
+  "middle"; 67 percent and above -> "high". A dial such as "level 2 of 9" uses
+  its position: lowest third, middle third, top third.
+
+An oven temperature given for preheating or setting the oven applies to the
+bake or roast actions in that oven until the text changes it.
+
+C. If the text states neither a level word nor a number, OMIT `heat_level`.
+Words such as boil, simmer, hot oil, preheated, until bubbling or until golden
+do not state a level. Never infer a level from the action name or from cooking
+knowledge ("simmer means low" is forbidden). Never output null, none, an empty
+string or a guessed level.
+
+D. Several levels in one action. Order them as they occur. If the text gives a
+duration for each part, use the proportions of those durations. Otherwise infer
+the shares from the wording: a brief first stage ("first", "bring up", "for a
+moment") gets the smaller share and the main cooking level gets the larger one.
+If nothing in the wording favors either, split equally. Examples: "simmer on low
+heat, then high heat to reduce the sauce" with no times -> {"low": 0.5,
+"high": 0.5}; "simmer 30 minutes on low, then 10 minutes on high" ->
+{"low": 0.75, "high": 0.25}.
+
+Different action verbs are different actions and each gets its own level on its
+own edge: "bring to a boil over high heat, then simmer on low for 30 minutes" ->
+the boil edge "high", the simmer edge "low".
+
+E. Propagation within one heating process. A heating process is the continuous,
+active heating of one container occurrence (the same continuous heating lineage
+of the model). When a later heat PROCESS edge in the same heating process gives
+no level of its own and the text does not say the fire changed, give it the
+level that was in effect at the end of the previous heat action:
+
+- if the previous action had a single level, copy that string;
+- if it had several levels, copy the LAST one in time order, as a string.
+
+Propagation rules:
+
+- Only heat PROCESS edges receive a propagated level. ADD, split and non-heat
+  PROCESS edges (cut, stir as preparation, mix, and similar) do not change the
+  level and do not receive the key.
+- An explicit level or number in the text for the later action always replaces
+  the inherited level.
+- Propagation ends when the text turns the heat off or takes the food off the
+  heat (关火, off the heat, 盛出, remove from the heat). The next heating after
+  that starts a new heating process and inherits nothing.
+- Propagation ends when the text changes the fire without saying to what ("adjust
+  the heat", 调整火力). From there, later edges are omitted until a level is
+  stated.
+- A different branch, a different container occurrence, or an independent
+  food chain never inherits from another one.
+- If no earlier level exists in the heating process, omit the key.
+
+Examples:
+
+"Heat oil over high heat, add garlic, fry" -> the heating action carries "high";
+a later fry in the same wok with no new wording inherits "high".
+
+"Stir-fry the beef over high heat for 1 minute, add the sauce, simmer 20 minutes"
+-> fry "high"; the simmer in the same pan inherits "high".
+
+"Turn off the heat, wait, then reheat" -> the reheat edge has no inherited
+level.
+
 
 
 Never output stale or mismatched edge indices.
@@ -2621,7 +3217,12 @@ Never output stale or mismatched edge indices.
 Before serialization verify ALL of the following:
 
 
-1. Every PROCESS action creates exactly ONE new output node.
+0. The top-level object contains `recipe_id`, copied exactly from the supplied
+   RECIPE_ID, plus source_text, text_steps, nodes, and edges. Every text_steps
+   entry contains both the exact source `text` and its English `text_en`.
+
+
+1. Every PROCESS action creates exactly ONE new output node, except split creates one NEW output per portion/component.
 
 2. Every PROCESS edge satisfies:
 
@@ -2679,6 +3280,27 @@ Before serialization verify ALL of the following:
 17. Same cooking environment is not recreated merely because another
     ADD occurs.
 
+17.1 Recreate the same container CATEGORY as a new container OCCURRENCE when
+     another entity begins an independent heat-processing episode before an
+     explicit combination. "Removed/set aside" is a sufficient signal but is
+     not required. Keep the resulting food branches separate.
+
+17.2 Never represent several independent cook-and-remove episodes by adding
+     all foods to one container and splitting its output. Use split only when
+     the recipe explicitly splits one entity or mixture.
+
+17.3 A single container occurrence must not have separate PROCESS outputs for
+     different current entities. Sugar reduction and pork searing, for example,
+     require separate branch-local container occurrences until the recipe
+     explicitly adds one prepared branch to the other.
+
+17.4 For every proposed container reuse, inspect the output node created by
+     each following operation. If those operations create different new nodes
+     on different branches, create a separate same-category container
+     occurrence in each branch. This includes the asymmetric case where one
+     ADD leaves the container as the current receiver while another branch's
+     PROCESS creates a new food node.
+
 18. Every explicit PROCESS action remains represented.
 
 19. Source and destination of a PROCESS transition are never merged.
@@ -2708,6 +3330,12 @@ Before serialization verify ALL of the following:
 
     A container-origin PROCESS must never begin as a disconnected branch.
 
+24.1 Before reusing a container node, verify that its cooking episode is still
+     active and belongs to the same current entity or established mixture.
+     "Remove/set aside" closes that episode for the removed ingredient, but a
+     change to a different independently processed entity also requires a newly
+     introduced container occurrence even without removal wording.
+
 25. Every node referenced by an edge actually exists.
 
 26. Every edge index is unique.
@@ -2718,36 +3346,98 @@ Before serialization verify ALL of the following:
 
 29. Edge indices are sequential after final renumbering.
 
-30. Every previous.edge_index refers to an existing finalized edge.
+30. No node contains a `previous` field in the model output. The generation
+    script derives it from finalized nodes and edges.
 
-31. previous.action exactly matches the referenced edge action.
+31. Every action with an explicit numeric elapsed-time quantity contains a
+     source-faithful `duration` string, including approximate numeric values
+     and numeric ranges. Edges without a numeric duration omit the key.
 
-32. previous.type exactly matches the referenced edge type.
+31.1 No duration is created from nonnumeric vague timing, overnight, finish
+     conditions, or general cooking knowledge, and duration is not propagated
+     to neighboring edges.
+
+31.2 `heat_level` appears only on PROCESS edges of type "heat". Its value is
+     "low", "middle" or "high", or an object whose keys are those words in time
+     order and whose values sum to 1.0. It is omitted when the text states no
+     level word or number, and is never null, none or an empty string.
+
+31.3 A heat edge without its own stated level inherits the level in effect at
+     the end of the previous heat action of the same heating process (the last
+     key when that action had several), unless the heat was turned off, the
+     food was removed from the heat, the fire was changed without a stated
+     level, or the edge belongs to another branch or container occurrence.
 
 33. flavor is exactly one allowed STRING.
+
+33.1 Every ingredient present in the fixed flavor vocabulary uses its specified
+     value exactly after name normalization. Only ingredients absent from that
+     vocabulary may use inferred flavor.
+
+33.2 Emit `spicing` exactly. Do not emit `spiced` or `spicied`.
 
 34. flavor is NEVER an array.
 
 35. physical_state uses only:
 
-    solid
+    whole
     chunk
     slice
     shred
-    dice
-    paste
     powder
     liquid
+    batter
+    paste
+    mash
+    dough
 
 36. NEVER use:
 
+    solid
+    solid-liquid mixture
     pieces
     small pieces
     cut
+    dice
+    cube
 
     as physical_state.
 
+36.1 `solid` and `solid-liquid mixture` are reasoning-only parent groups.
+     Serialize only their most specific supported leaf category. Do not add
+     physical_subtype or any other state-subcategory field.
+
 37. Final node represents the completed dish.
+
+38. Every node has at most ONE outgoing edge with action="add".
+    Count by source index, not by source name; incoming ADD is not limited.
+
+39. A later same-name ADD source uses a fresh portion node when the earlier
+    same-name source has already supplied an ADD edge (section 1.1).
+
+40. Every split is supported by an explicit splitting action in the text.
+    Without explicit splitting, repeated ADD occurrences use fresh same-name
+    source nodes, including prepared intermediates; never infer split from
+    multiple uses. Never merge these distinct sources by attributes.
+
+41. Every heat action has a resolved heat environment: fry uses wok_pot;
+    bake uses oven. Container nodes and container attributes never represent
+    ignored non-heat vessels such as bowl, mold, or plate.
+
+41.1 For every repeated use of the same physical heat vessel, decide whether
+     it continues the same active branch or begins an independent cooking
+     episode. Independently processed pork, egg, pepper, sugar, or other
+     ingredients use separate same-category container occurrences before their
+     explicit combination, whether or not the text says "remove/set aside,"
+     and are never recovered by splitting one shared container.
+
+42. Split creates one fresh output per portion/component; the one-output
+    PROCESS rule applies only to non-split actions.
+
+43. Names retain the same canonical label when ingredient identity is
+    unchanged. No processing/state qualifiers or node-reference suffixes
+    appear in serialized names. New product names occur only when formed,
+    and equivalent ingredients use consistent labels across recipes.
 
 
 ==================================================
@@ -2772,7 +3462,9 @@ Follow this order internally:
 
     container only as receiving_entity / cooking environment.
 
-2. Normalize actions and entity names.
+2. Normalize actions and entity names. Preserve the canonical name while
+   identity is unchanged; rename only a newly formed product. Use consistent
+   labels across recipes and keep state descriptions out of names.
 
 3. Assign MAIN / AUX roles during the text stage.
 
@@ -2800,6 +3492,22 @@ Follow this order internally:
 
    ADD.
 
+9.5 Extract action duration.
+
+    If the exact source wording gives a numeric elapsed-time quantity, store it
+    as the edge's optional `duration` string, preserving approximations and
+    ranges. Resolve its scope when multiple atomic actions share a sentence.
+    Nonnumeric vague, overnight, or condition-based timing omits `duration`.
+
+9.6 Extract heat level for every PROCESS edge of type "heat".
+
+    Use the literal fire word if the text gives one; otherwise convert a stated
+    temperature, power or dial number with the section 16.2 thresholds. If
+    neither is stated, leave `heat_level` out. Several levels inside one action
+    become an ordered object whose fractions sum to 1.0. Then propagate the
+    level in effect at the end of each heat action to the next heat action of
+    the same heating process when the text does not change it.
+
 10. For PROCESS:
 
     ALWAYS create a NEW output node.
@@ -2818,6 +3526,22 @@ Follow this order internally:
 11.5 Before every container-origin PROCESS:
 
      identify the CURRENT state of the entity being processed.
+
+     Identify whether this is a continuation of the same active cooking
+     episode for that same entity or an already-established mixture. If this
+     entity is processed independently before explicit combination, introduce
+     a new branch-local container occurrence even when the physical vessel and
+     canonical container category are unchanged. "Removed/set aside" confirms
+     this boundary but is not required.
+
+     Reject any candidate in which one container occurrence independently
+     produces different entities through separate PROCESS edges. Keep those
+     entity branches separate and merge them only at the explicit ADD step.
+
+     Before reusing a container, trace the immediate post-operation output for
+     every participating entity. If the outputs are different nodes on
+     different branches, replace the proposed shared container with one
+     branch-local container occurrence per output lineage.
 
      If that state is not already connected to the container,
      add:
@@ -2839,6 +3563,9 @@ Follow this order internally:
     MAIN changes container → new container
 
 13. Preserve parallel branches.
+
+    Separate ingredients cooked and removed in successive uses of one vessel
+    remain parallel branches. Do not merge them through vessel reuse.
 
 14. Merge branches only when the recipe actually combines them.
 
@@ -2862,9 +3589,9 @@ It must be one of:
 - explicitly introduced new cooking environment;
 - legitimate initial ingredient/entity state.
 
-If its only creation reason is ADD:
+If it is a receiving-state copy whose only creation reason is ADD:
 
-remove it.
+remove it. Preserve legitimate source portions and split outputs from section 1.1.
 
 20. Finalize edges.
 
@@ -2872,11 +3599,20 @@ remove it.
 
 22. Assign edge indices.
 
-23. Derive previous from the finalized graph.
+23. Assign stable S001-style IDs to the already translated atomic source
+    steps. Serialize the exact Chinese source_text and Chinese `text` spans,
+    the English `text_en` created before graph construction, verified source
+    offsets, and node_action_pairs. Do not create translations only at this
+    final serialization stage.
 
-24. Validate previous against edges.
+24. Add matching text_step_ids to every referenced node and edge, including
+    implicit stage-change/container nodes and their structural edges.
 
-25. Serialize JSON.
+25. Copy the supplied RECIPE_ID exactly into top-level `recipe_id`.
+
+26. Validate all text-step references in both directions, confirm every step
+    has a non-empty `text_en`, confirm that nodes omit `previous`, then
+    serialize JSON.
 
 
 ==================================================
@@ -2890,7 +3626,7 @@ Every action is classified as either PROCESS or ADD.
 
 PROCESS:
 
-- ALWAYS creates exactly ONE NEW output node;
+- ALWAYS creates exactly ONE NEW output node, except split creates one NEW output per portion/component;
 - ALWAYS advances procedural state;
 - ALWAYS updates CURRENT_STATE;
 - ALWAYS satisfies node1 != node2.
@@ -2961,10 +3697,21 @@ Never use PROCESS self-loops.
 
 Never merge the two sides of an explicit PROCESS transition.
 
+Every graph node and action edge must be alignable to its exact source
+atomic step(s) through text_step_ids and text_steps. Each node_action_pair
+must reference a real node index and action edge index. An implicit
+stage-change/container node belongs to the source step that triggers it.
+
+Every action with an explicit numeric elapsed-time quantity stores its duration
+on that action edge only, including approximate numeric values and ranges.
+Actions without numeric timing omit the key; finish conditions are not
+converted into durations.
+
+Every heat PROCESS edge that states a fire word or a temperature carries
+`heat_level` ("low", "middle", "high", or an ordered object of fractions that
+sum to 1.0); edges that state nothing omit it unless a level is propagated from
+the previous heat action of the same heating process.
+
 Build topology first.
 
 Finalize all node and edge indices.
-
-Generate previous only after edge indices are final.
-
-Validate all previous references before serialization.

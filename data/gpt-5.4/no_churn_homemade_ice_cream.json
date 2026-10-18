@@ -1,0 +1,500 @@
+{
+  "recipe_id": "no_churn_homemade_ice_cream",
+  "atomic_steps": [
+    {
+      "step": 1,
+      "entity": "egg",
+      "action": "split",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 2,
+      "entity": "sugar",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "yolk"
+    },
+    {
+      "step": 3,
+      "entity": "lemon_juice",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "yolk"
+    },
+    {
+      "step": 4,
+      "entity": "yolk",
+      "action": "whisk",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 5,
+      "entity": "milk",
+      "action": "heat",
+      "role": "main",
+      "receiving_entity": "sim_pot"
+    },
+    {
+      "step": 6,
+      "entity": "milk",
+      "action": "add",
+      "role": "main",
+      "receiving_entity": "yolk_mixture"
+    },
+    {
+      "step": 7,
+      "entity": "yolk_mixture",
+      "action": "stir",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 8,
+      "entity": "yolk_mixture",
+      "action": "add",
+      "role": "main",
+      "receiving_entity": "sim_pot"
+    },
+    {
+      "step": 9,
+      "entity": "salt",
+      "action": "add",
+      "role": "aux",
+      "receiving_entity": "sim_pot"
+    },
+    {
+      "step": 10,
+      "entity": "custard_base",
+      "action": "heat",
+      "role": "main",
+      "receiving_entity": "sim_pot"
+    },
+    {
+      "step": 11,
+      "entity": "custard_base",
+      "action": "stir",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 12,
+      "entity": "custard_base",
+      "action": "prepare",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 13,
+      "entity": "cream",
+      "action": "whisk",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 14,
+      "entity": "whipped_cream",
+      "action": "add",
+      "role": "main",
+      "receiving_entity": "cooled_custard"
+    },
+    {
+      "step": 15,
+      "entity": "cooled_custard",
+      "action": "stir",
+      "role": "main",
+      "receiving_entity": null
+    },
+    {
+      "step": 16,
+      "entity": "ice_cream_base",
+      "action": "add",
+      "role": "main",
+      "receiving_entity": "mold"
+    },
+    {
+      "step": 17,
+      "entity": "ice_cream_base",
+      "action": "ice",
+      "role": "main",
+      "receiving_entity": "mold"
+    }
+  ],
+  "nodes": [
+    {
+      "index": 1,
+      "container": "none",
+      "name": "egg",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": []
+    },
+    {
+      "index": 2,
+      "container": "none",
+      "name": "yolk",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 1,
+          "action": "split",
+          "type": "prep",
+          "source_ingredient": "egg"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "container": "none",
+      "name": "egg_white",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 2,
+          "action": "split",
+          "type": "prep",
+          "source_ingredient": "egg"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "container": "none",
+      "name": "sugar",
+      "type": "aux",
+      "physical_state": "powder",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": []
+    },
+    {
+      "index": 5,
+      "container": "none",
+      "name": "lemon_juice",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "sour",
+      "previous": []
+    },
+    {
+      "index": 6,
+      "container": "none",
+      "name": "yolk_mixture",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 5,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "yolk"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "container": "none",
+      "name": "milk",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": []
+    },
+    {
+      "index": 8,
+      "container": "sim_pot",
+      "name": "sim_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 9,
+      "container": "sim_pot",
+      "name": "heated_milk",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": [
+        {
+          "edge_index": 7,
+          "action": "heat",
+          "type": "heat",
+          "source_ingredient": "sim_pot"
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "container": "none",
+      "name": "egg_milk_mixture",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 9,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "yolk_mixture"
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "container": "none",
+      "name": "salt",
+      "type": "aux",
+      "physical_state": "powder",
+      "chemical_state": "raw",
+      "flavor": "salty",
+      "previous": []
+    },
+    {
+      "index": 12,
+      "container": "sim_pot",
+      "name": "cooked_custard",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 12,
+          "action": "heat",
+          "type": "heat",
+          "source_ingredient": "sim_pot"
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "container": "none",
+      "name": "cooled_custard",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 13,
+          "action": "prepare",
+          "type": "prep",
+          "source_ingredient": "cooked_custard"
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "container": "none",
+      "name": "cream",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": []
+    },
+    {
+      "index": 15,
+      "container": "none",
+      "name": "whipped_cream",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": [
+        {
+          "edge_index": 14,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "cream"
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "container": "none",
+      "name": "ice_cream_base",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "cooked",
+      "flavor": "sweet",
+      "previous": [
+        {
+          "edge_index": 16,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "cooled_custard"
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "container": "mold",
+      "name": "mold",
+      "type": "container",
+      "flavor": "none",
+      "previous": []
+    },
+    {
+      "index": 18,
+      "container": "mold",
+      "name": "ice_cream",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "cooked",
+      "flavor": "sweet",
+      "previous": [
+        {
+          "edge_index": 18,
+          "action": "ice",
+          "type": "cold",
+          "source_ingredient": "mold"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "index": 1,
+      "action": "split",
+      "type": "prep",
+      "node1": 1,
+      "node2": 2
+    },
+    {
+      "index": 2,
+      "action": "split",
+      "type": "prep",
+      "node1": 1,
+      "node2": 3
+    },
+    {
+      "index": 3,
+      "action": "add",
+      "type": "prep",
+      "node1": 4,
+      "node2": 2
+    },
+    {
+      "index": 4,
+      "action": "add",
+      "type": "prep",
+      "node1": 5,
+      "node2": 2
+    },
+    {
+      "index": 5,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 2,
+      "node2": 6
+    },
+    {
+      "index": 6,
+      "action": "add",
+      "type": "prep",
+      "node1": 7,
+      "node2": 8
+    },
+    {
+      "index": 7,
+      "action": "heat",
+      "type": "heat",
+      "node1": 8,
+      "node2": 9
+    },
+    {
+      "index": 8,
+      "action": "add",
+      "type": "prep",
+      "node1": 9,
+      "node2": 6
+    },
+    {
+      "index": 9,
+      "action": "stir",
+      "type": "prep",
+      "node1": 6,
+      "node2": 10
+    },
+    {
+      "index": 10,
+      "action": "add",
+      "type": "prep",
+      "node1": 10,
+      "node2": 8
+    },
+    {
+      "index": 11,
+      "action": "add",
+      "type": "prep",
+      "node1": 11,
+      "node2": 8
+    },
+    {
+      "index": 12,
+      "action": "heat",
+      "type": "heat",
+      "node1": 8,
+      "node2": 12
+    },
+    {
+      "index": 13,
+      "action": "prepare",
+      "type": "prep",
+      "node1": 12,
+      "node2": 13
+    },
+    {
+      "index": 14,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 14,
+      "node2": 15
+    },
+    {
+      "index": 15,
+      "action": "add",
+      "type": "prep",
+      "node1": 15,
+      "node2": 13
+    },
+    {
+      "index": 16,
+      "action": "stir",
+      "type": "prep",
+      "node1": 13,
+      "node2": 16
+    },
+    {
+      "index": 17,
+      "action": "add",
+      "type": "prep",
+      "node1": 16,
+      "node2": 17
+    },
+    {
+      "index": 18,
+      "action": "ice",
+      "type": "cold",
+      "node1": 17,
+      "node2": 18
+    }
+  ]
+}

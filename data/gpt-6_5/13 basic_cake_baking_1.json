@@ -1,0 +1,1442 @@
+{
+  "source_text": "Cake baking -Recipe 1\n\n用料\n土鸡蛋 6只\n玉米油 40克\n牛奶 150毫升\n低筋面粉 100克\n玉米淀粉 30克\n细砂糖 80克\n柠檬汁 / 白醋 几滴\n\n做法\n准备两个碗，装蛋清的碗需无水无油。\n6个冷藏一夜的土鸡蛋，分离蛋清和蛋黄。\n蛋清放入冷冻室 15 分钟。\n将牛奶和玉米油称量好，用打蛋器搅打至乳化。\n加入玉米淀粉和低筋面粉（不用过筛）。\n将蛋黄加入面糊中，搅拌均匀。\n如果觉得面糊有腥味或油味，可以加入两滴香草精。\n将面糊过筛一遍，放入冰箱冷藏。这一步很重要，不可省略。\n冷冻 15 分钟后的蛋清会出现冰渣，此时开始打发蛋清。蛋清中加入 3 滴柠檬汁，全程高速打发。\n第一次打发：蛋清呈大泡状时，加入第一次糖。\n第二次打发：蛋清呈白色流动状时，加入第二次糖。\n打好的蛋清提起后有小尖角，倒扣不掉落。\n烤盘放入烤箱；烤箱 180 度预热 10 分钟。\n从冰箱取出蛋黄糊。\n将蛋清分两次次加入蛋黄糊中。\n在两个 9 寸模具中铺上油纸。\n将蛋糕糊倒入模具中，大约 8 分满。\n放入烤箱，设置 130 度烤 60 分钟。\n烤至 50 分钟时，蛋糕会微微膨胀。\n烤好出炉，不坍塌、不回缩。",
+  "text_steps": [
+    {
+      "id": "S001",
+      "text": "6个冷藏一夜的土鸡蛋，分离蛋清和蛋黄。",
+      "start_char": 111,
+      "end_char": 130,
+      "node_indices": [
+        1,
+        2,
+        3
+      ],
+      "edge_indices": [
+        1,
+        2
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 1,
+          "edge_index": 1,
+          "role": "input"
+        },
+        {
+          "node_index": 2,
+          "edge_index": 1,
+          "role": "output"
+        },
+        {
+          "node_index": 1,
+          "edge_index": 2,
+          "role": "input"
+        },
+        {
+          "node_index": 3,
+          "edge_index": 2,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S002",
+      "text": "蛋清放入冷冻室 15 分钟。",
+      "start_char": 131,
+      "end_char": 145,
+      "node_indices": [
+        2,
+        4
+      ],
+      "edge_indices": [
+        3
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 2,
+          "edge_index": 3,
+          "role": "input"
+        },
+        {
+          "node_index": 4,
+          "edge_index": 3,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S003",
+      "text": "将牛奶和玉米油称量好",
+      "start_char": 146,
+      "end_char": 156,
+      "node_indices": [
+        5,
+        6
+      ],
+      "edge_indices": [
+        4
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 5,
+          "edge_index": 4,
+          "role": "input"
+        },
+        {
+          "node_index": 6,
+          "edge_index": 4,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S004",
+      "text": "将牛奶和玉米油称量好",
+      "start_char": 146,
+      "end_char": 156,
+      "node_indices": [
+        7,
+        8
+      ],
+      "edge_indices": [
+        5
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 7,
+          "edge_index": 5,
+          "role": "input"
+        },
+        {
+          "node_index": 8,
+          "edge_index": 5,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S005",
+      "text": "用打蛋器搅打至乳化。",
+      "start_char": 157,
+      "end_char": 167,
+      "node_indices": [
+        6,
+        8,
+        9
+      ],
+      "edge_indices": [
+        6,
+        7
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 8,
+          "edge_index": 6,
+          "role": "source"
+        },
+        {
+          "node_index": 6,
+          "edge_index": 6,
+          "role": "receiver"
+        },
+        {
+          "node_index": 6,
+          "edge_index": 7,
+          "role": "input"
+        },
+        {
+          "node_index": 9,
+          "edge_index": 7,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S006",
+      "text": "加入玉米淀粉和低筋面粉（不用过筛）。",
+      "start_char": 168,
+      "end_char": 186,
+      "node_indices": [
+        10,
+        9
+      ],
+      "edge_indices": [
+        8
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 10,
+          "edge_index": 8,
+          "role": "source"
+        },
+        {
+          "node_index": 9,
+          "edge_index": 8,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S007",
+      "text": "加入玉米淀粉和低筋面粉（不用过筛）。",
+      "start_char": 168,
+      "end_char": 186,
+      "node_indices": [
+        11,
+        9
+      ],
+      "edge_indices": [
+        9
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 11,
+          "edge_index": 9,
+          "role": "source"
+        },
+        {
+          "node_index": 9,
+          "edge_index": 9,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S008",
+      "text": "将蛋黄加入面糊中",
+      "start_char": 187,
+      "end_char": 195,
+      "node_indices": [
+        3,
+        9
+      ],
+      "edge_indices": [
+        10
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 3,
+          "edge_index": 10,
+          "role": "source"
+        },
+        {
+          "node_index": 9,
+          "edge_index": 10,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S009",
+      "text": "搅拌均匀",
+      "start_char": 196,
+      "end_char": 200,
+      "node_indices": [
+        9,
+        12
+      ],
+      "edge_indices": [
+        11
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 9,
+          "edge_index": 11,
+          "role": "input"
+        },
+        {
+          "node_index": 12,
+          "edge_index": 11,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S010",
+      "text": "将面糊过筛一遍",
+      "start_char": 226,
+      "end_char": 233,
+      "node_indices": [
+        12,
+        13
+      ],
+      "edge_indices": [
+        12
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 12,
+          "edge_index": 12,
+          "role": "input"
+        },
+        {
+          "node_index": 13,
+          "edge_index": 12,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S011",
+      "text": "放入冰箱冷藏",
+      "start_char": 234,
+      "end_char": 240,
+      "node_indices": [
+        13,
+        14
+      ],
+      "edge_indices": [
+        13
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 13,
+          "edge_index": 13,
+          "role": "input"
+        },
+        {
+          "node_index": 14,
+          "edge_index": 13,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S012",
+      "text": "蛋清中加入 3 滴柠檬汁",
+      "start_char": 281,
+      "end_char": 293,
+      "node_indices": [
+        15,
+        4
+      ],
+      "edge_indices": [
+        14
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 15,
+          "edge_index": 14,
+          "role": "source"
+        },
+        {
+          "node_index": 4,
+          "edge_index": 14,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S013",
+      "text": "此时开始打发蛋清。蛋清中加入 3 滴柠檬汁，全程高速打发。",
+      "start_char": 272,
+      "end_char": 301,
+      "node_indices": [
+        4,
+        16
+      ],
+      "edge_indices": [
+        15
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 4,
+          "edge_index": 15,
+          "role": "input"
+        },
+        {
+          "node_index": 16,
+          "edge_index": 15,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S014",
+      "text": "加入第一次糖",
+      "start_char": 316,
+      "end_char": 322,
+      "node_indices": [
+        17,
+        16
+      ],
+      "edge_indices": [
+        16
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 17,
+          "edge_index": 16,
+          "role": "source"
+        },
+        {
+          "node_index": 16,
+          "edge_index": 16,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S015",
+      "text": "第二次打发：蛋清呈白色流动状时",
+      "start_char": 324,
+      "end_char": 339,
+      "node_indices": [
+        16,
+        18
+      ],
+      "edge_indices": [
+        17
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 16,
+          "edge_index": 17,
+          "role": "input"
+        },
+        {
+          "node_index": 18,
+          "edge_index": 17,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S016",
+      "text": "加入第二次糖",
+      "start_char": 340,
+      "end_char": 346,
+      "node_indices": [
+        19,
+        18
+      ],
+      "edge_indices": [
+        18
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 19,
+          "edge_index": 18,
+          "role": "source"
+        },
+        {
+          "node_index": 18,
+          "edge_index": 18,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S017",
+      "text": "打好的蛋清提起后有小尖角，倒扣不掉落。",
+      "start_char": 348,
+      "end_char": 367,
+      "node_indices": [
+        18,
+        20
+      ],
+      "edge_indices": [
+        19
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 18,
+          "edge_index": 19,
+          "role": "input"
+        },
+        {
+          "node_index": 20,
+          "edge_index": 19,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S018",
+      "text": "烤箱 180 度预热 10 分钟。",
+      "start_char": 375,
+      "end_char": 392,
+      "node_indices": [
+        21,
+        22
+      ],
+      "edge_indices": [
+        20
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 21,
+          "edge_index": 20,
+          "role": "environment"
+        },
+        {
+          "node_index": 22,
+          "edge_index": 20,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S019",
+      "text": "将蛋清分两次次加入蛋黄糊中。",
+      "start_char": 403,
+      "end_char": 417,
+      "node_indices": [
+        20,
+        23,
+        24
+      ],
+      "edge_indices": [
+        21,
+        22
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 20,
+          "edge_index": 21,
+          "role": "input"
+        },
+        {
+          "node_index": 23,
+          "edge_index": 21,
+          "role": "output"
+        },
+        {
+          "node_index": 20,
+          "edge_index": 22,
+          "role": "input"
+        },
+        {
+          "node_index": 24,
+          "edge_index": 22,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S020",
+      "text": "将蛋清分两次次加入蛋黄糊中。",
+      "start_char": 403,
+      "end_char": 417,
+      "node_indices": [
+        23,
+        14
+      ],
+      "edge_indices": [
+        23
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 23,
+          "edge_index": 23,
+          "role": "source"
+        },
+        {
+          "node_index": 14,
+          "edge_index": 23,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S021",
+      "text": "将蛋清分两次次加入蛋黄糊中。",
+      "start_char": 403,
+      "end_char": 417,
+      "node_indices": [
+        24,
+        14
+      ],
+      "edge_indices": [
+        24
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 24,
+          "edge_index": 24,
+          "role": "source"
+        },
+        {
+          "node_index": 14,
+          "edge_index": 24,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S022",
+      "text": "将蛋清分两次次加入蛋黄糊中。",
+      "start_char": 403,
+      "end_char": 417,
+      "node_indices": [
+        14,
+        25
+      ],
+      "edge_indices": [
+        25
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 14,
+          "edge_index": 25,
+          "role": "input"
+        },
+        {
+          "node_index": 25,
+          "edge_index": 25,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S023",
+      "text": "放入烤箱，设置 130 度烤 60 分钟。",
+      "start_char": 451,
+      "end_char": 470,
+      "node_indices": [
+        25,
+        22,
+        26
+      ],
+      "edge_indices": [
+        26,
+        27
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 25,
+          "edge_index": 26,
+          "role": "source"
+        },
+        {
+          "node_index": 22,
+          "edge_index": 26,
+          "role": "receiver"
+        },
+        {
+          "node_index": 22,
+          "edge_index": 27,
+          "role": "environment"
+        },
+        {
+          "node_index": 26,
+          "edge_index": 27,
+          "role": "output"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "index": 1,
+      "container": "none",
+      "name": "egg",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S001"
+      ]
+    },
+    {
+      "index": 2,
+      "container": "none",
+      "name": "egg_white",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 1,
+          "action": "split",
+          "type": "prep",
+          "source_ingredient": "egg"
+        }
+      ],
+      "text_step_ids": [
+        "S001",
+        "S002"
+      ]
+    },
+    {
+      "index": 3,
+      "container": "none",
+      "name": "yolk",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 2,
+          "action": "split",
+          "type": "prep",
+          "source_ingredient": "egg"
+        }
+      ],
+      "text_step_ids": [
+        "S001",
+        "S008"
+      ]
+    },
+    {
+      "index": 4,
+      "container": "none",
+      "name": "egg_white",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 3,
+          "action": "ice",
+          "type": "cold",
+          "source_ingredient": "egg_white"
+        },
+        {
+          "edge_index": 14,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "lemon_juice"
+        }
+      ],
+      "text_step_ids": [
+        "S002",
+        "S012",
+        "S013"
+      ]
+    },
+    {
+      "index": 5,
+      "container": "none",
+      "name": "milk",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S003"
+      ]
+    },
+    {
+      "index": 6,
+      "container": "none",
+      "name": "milk",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 4,
+          "action": "prepare",
+          "type": "prep",
+          "source_ingredient": "milk"
+        },
+        {
+          "edge_index": 6,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "oil"
+        }
+      ],
+      "text_step_ids": [
+        "S003",
+        "S005"
+      ]
+    },
+    {
+      "index": 7,
+      "container": "none",
+      "name": "oil",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S004"
+      ]
+    },
+    {
+      "index": 8,
+      "container": "none",
+      "name": "oil",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 5,
+          "action": "prepare",
+          "type": "prep",
+          "source_ingredient": "oil"
+        }
+      ],
+      "text_step_ids": [
+        "S004",
+        "S005"
+      ]
+    },
+    {
+      "index": 9,
+      "container": "none",
+      "name": "emulsion",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 7,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "milk"
+        },
+        {
+          "edge_index": 8,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "corn_starch"
+        },
+        {
+          "edge_index": 9,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "flour"
+        },
+        {
+          "edge_index": 10,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "yolk"
+        }
+      ],
+      "text_step_ids": [
+        "S005",
+        "S006",
+        "S007",
+        "S008",
+        "S009"
+      ]
+    },
+    {
+      "index": 10,
+      "container": "none",
+      "name": "corn_starch",
+      "type": "aux",
+      "physical_state": "powder",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S006"
+      ]
+    },
+    {
+      "index": 11,
+      "container": "none",
+      "name": "flour",
+      "type": "main",
+      "physical_state": "powder",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S007"
+      ]
+    },
+    {
+      "index": 12,
+      "container": "none",
+      "name": "yolk_paste",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 11,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "emulsion"
+        }
+      ],
+      "text_step_ids": [
+        "S009",
+        "S010"
+      ]
+    },
+    {
+      "index": 13,
+      "container": "none",
+      "name": "yolk_paste",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 12,
+          "action": "prepare",
+          "type": "prep",
+          "source_ingredient": "yolk_paste"
+        }
+      ],
+      "text_step_ids": [
+        "S010",
+        "S011"
+      ]
+    },
+    {
+      "index": 14,
+      "container": "none",
+      "name": "yolk_paste",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 13,
+          "action": "ice",
+          "type": "cold",
+          "source_ingredient": "yolk_paste"
+        },
+        {
+          "edge_index": 23,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "egg_white_paste"
+        },
+        {
+          "edge_index": 24,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "egg_white_paste"
+        }
+      ],
+      "text_step_ids": [
+        "S011",
+        "S020",
+        "S021",
+        "S022"
+      ]
+    },
+    {
+      "index": 15,
+      "container": "none",
+      "name": "lemon_juice",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "sour",
+      "previous": [],
+      "text_step_ids": [
+        "S012"
+      ]
+    },
+    {
+      "index": 16,
+      "container": "none",
+      "name": "egg_white_paste",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 15,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "egg_white"
+        },
+        {
+          "edge_index": 16,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "sugar"
+        }
+      ],
+      "text_step_ids": [
+        "S013",
+        "S014",
+        "S015"
+      ]
+    },
+    {
+      "index": 17,
+      "container": "none",
+      "name": "sugar",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": [],
+      "text_step_ids": [
+        "S014"
+      ]
+    },
+    {
+      "index": 18,
+      "container": "none",
+      "name": "egg_white_paste",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 17,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "egg_white_paste"
+        },
+        {
+          "edge_index": 18,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "sugar"
+        }
+      ],
+      "text_step_ids": [
+        "S015",
+        "S016",
+        "S017"
+      ]
+    },
+    {
+      "index": 19,
+      "container": "none",
+      "name": "sugar",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": [],
+      "text_step_ids": [
+        "S016"
+      ]
+    },
+    {
+      "index": 20,
+      "container": "none",
+      "name": "egg_white_paste",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 19,
+          "action": "whisk",
+          "type": "prep",
+          "source_ingredient": "egg_white_paste"
+        }
+      ],
+      "text_step_ids": [
+        "S017",
+        "S019"
+      ]
+    },
+    {
+      "index": 21,
+      "container": "oven",
+      "name": "oven",
+      "type": "container",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S018"
+      ]
+    },
+    {
+      "index": 22,
+      "container": "oven",
+      "name": "oven",
+      "type": "container",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 20,
+          "action": "heat",
+          "type": "heat",
+          "source_ingredient": "oven"
+        },
+        {
+          "edge_index": 26,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "cake_paste"
+        }
+      ],
+      "text_step_ids": [
+        "S018",
+        "S023"
+      ]
+    },
+    {
+      "index": 23,
+      "container": "none",
+      "name": "egg_white_paste",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 21,
+          "action": "split",
+          "type": "prep",
+          "source_ingredient": "egg_white_paste"
+        }
+      ],
+      "text_step_ids": [
+        "S019",
+        "S020"
+      ]
+    },
+    {
+      "index": 24,
+      "container": "none",
+      "name": "egg_white_paste",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 22,
+          "action": "split",
+          "type": "prep",
+          "source_ingredient": "egg_white_paste"
+        }
+      ],
+      "text_step_ids": [
+        "S019",
+        "S021"
+      ]
+    },
+    {
+      "index": 25,
+      "container": "none",
+      "name": "cake_paste",
+      "type": "main",
+      "physical_state": "paste",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 25,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "yolk_paste"
+        }
+      ],
+      "text_step_ids": [
+        "S022",
+        "S023"
+      ]
+    },
+    {
+      "index": 26,
+      "container": "oven",
+      "name": "cake_base",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "cooked",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 27,
+          "action": "bake",
+          "type": "heat",
+          "source_ingredient": "oven"
+        }
+      ],
+      "text_step_ids": [
+        "S023"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "index": 1,
+      "action": "split",
+      "type": "prep",
+      "node1": 1,
+      "node2": 2,
+      "text_step_ids": [
+        "S001"
+      ]
+    },
+    {
+      "index": 2,
+      "action": "split",
+      "type": "prep",
+      "node1": 1,
+      "node2": 3,
+      "text_step_ids": [
+        "S001"
+      ]
+    },
+    {
+      "index": 3,
+      "action": "ice",
+      "type": "cold",
+      "node1": 2,
+      "node2": 4,
+      "text_step_ids": [
+        "S002"
+      ],
+      "duration": "15 minutes"
+    },
+    {
+      "index": 4,
+      "action": "prepare",
+      "type": "prep",
+      "node1": 5,
+      "node2": 6,
+      "text_step_ids": [
+        "S003"
+      ]
+    },
+    {
+      "index": 5,
+      "action": "prepare",
+      "type": "prep",
+      "node1": 7,
+      "node2": 8,
+      "text_step_ids": [
+        "S004"
+      ]
+    },
+    {
+      "index": 6,
+      "action": "add",
+      "type": "prep",
+      "node1": 8,
+      "node2": 6,
+      "text_step_ids": [
+        "S005"
+      ]
+    },
+    {
+      "index": 7,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 6,
+      "node2": 9,
+      "text_step_ids": [
+        "S005"
+      ]
+    },
+    {
+      "index": 8,
+      "action": "add",
+      "type": "prep",
+      "node1": 10,
+      "node2": 9,
+      "text_step_ids": [
+        "S006"
+      ]
+    },
+    {
+      "index": 9,
+      "action": "add",
+      "type": "prep",
+      "node1": 11,
+      "node2": 9,
+      "text_step_ids": [
+        "S007"
+      ]
+    },
+    {
+      "index": 10,
+      "action": "add",
+      "type": "prep",
+      "node1": 3,
+      "node2": 9,
+      "text_step_ids": [
+        "S008"
+      ]
+    },
+    {
+      "index": 11,
+      "action": "stir",
+      "type": "prep",
+      "node1": 9,
+      "node2": 12,
+      "text_step_ids": [
+        "S009"
+      ]
+    },
+    {
+      "index": 12,
+      "action": "prepare",
+      "type": "prep",
+      "node1": 12,
+      "node2": 13,
+      "text_step_ids": [
+        "S010"
+      ]
+    },
+    {
+      "index": 13,
+      "action": "ice",
+      "type": "cold",
+      "node1": 13,
+      "node2": 14,
+      "text_step_ids": [
+        "S011"
+      ]
+    },
+    {
+      "index": 14,
+      "action": "add",
+      "type": "prep",
+      "node1": 15,
+      "node2": 4,
+      "text_step_ids": [
+        "S012"
+      ]
+    },
+    {
+      "index": 15,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 4,
+      "node2": 16,
+      "text_step_ids": [
+        "S013"
+      ]
+    },
+    {
+      "index": 16,
+      "action": "add",
+      "type": "prep",
+      "node1": 17,
+      "node2": 16,
+      "text_step_ids": [
+        "S014"
+      ]
+    },
+    {
+      "index": 17,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 16,
+      "node2": 18,
+      "text_step_ids": [
+        "S015"
+      ]
+    },
+    {
+      "index": 18,
+      "action": "add",
+      "type": "prep",
+      "node1": 19,
+      "node2": 18,
+      "text_step_ids": [
+        "S016"
+      ]
+    },
+    {
+      "index": 19,
+      "action": "whisk",
+      "type": "prep",
+      "node1": 18,
+      "node2": 20,
+      "text_step_ids": [
+        "S017"
+      ]
+    },
+    {
+      "index": 20,
+      "action": "heat",
+      "type": "heat",
+      "node1": 21,
+      "node2": 22,
+      "duration": "10 minutes",
+      "text_step_ids": [
+        "S018"
+      ]
+    },
+    {
+      "index": 21,
+      "action": "split",
+      "type": "prep",
+      "node1": 20,
+      "node2": 23,
+      "text_step_ids": [
+        "S019"
+      ]
+    },
+    {
+      "index": 22,
+      "action": "split",
+      "type": "prep",
+      "node1": 20,
+      "node2": 24,
+      "text_step_ids": [
+        "S019"
+      ]
+    },
+    {
+      "index": 23,
+      "action": "add",
+      "type": "prep",
+      "node1": 23,
+      "node2": 14,
+      "text_step_ids": [
+        "S020"
+      ]
+    },
+    {
+      "index": 24,
+      "action": "add",
+      "type": "prep",
+      "node1": 24,
+      "node2": 14,
+      "text_step_ids": [
+        "S021"
+      ]
+    },
+    {
+      "index": 25,
+      "action": "stir",
+      "type": "prep",
+      "node1": 14,
+      "node2": 25,
+      "text_step_ids": [
+        "S022"
+      ]
+    },
+    {
+      "index": 26,
+      "action": "add",
+      "type": "prep",
+      "node1": 25,
+      "node2": 22,
+      "text_step_ids": [
+        "S023"
+      ]
+    },
+    {
+      "index": 27,
+      "action": "bake",
+      "type": "heat",
+      "node1": 22,
+      "node2": 26,
+      "duration": "60 minutes",
+      "text_step_ids": [
+        "S023"
+      ]
+    }
+  ]
+}

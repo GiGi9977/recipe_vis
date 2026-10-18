@@ -1,0 +1,1863 @@
+{
+  "source_text": "Recipe text:  \n1. 五花肉切成小块，冷水下锅，加入姜片、葱段、料酒，焯水去腥。焯水前可以先用盐揉洗猪肉，再清洗干净。\n2. 焯好的五花肉用纸巾擦干水分。开小火，锅中可不放油或放少量油，加入五花肉翻炒，将多余油脂煸出。不要煸太久，避免肉变硬。\n3. 另起锅放少许油，加入冰糖，小火炒出糖色，等糖浆呈香油色并开始冒泡。\n4. 放入煎好的五花肉炒至上色，加入少量老抽和生抽翻炒均匀，再加入八角、桂皮、香叶。\n5. 加入热水没过五花肉，大火烧开后转小火炖煮约 50 分钟。\n6. 最后加入盐调味，大火收汁即可。放盐时也可以加入少量红豆腐乳或腐乳汤调色调味。",
+  "text_steps": [
+    {
+      "id": "S001",
+      "text": "五花肉切成小块，",
+      "start_char": 18,
+      "end_char": 26,
+      "node_indices": [
+        1,
+        2
+      ],
+      "edge_indices": [
+        1
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 1,
+          "edge_index": 1,
+          "role": "input"
+        },
+        {
+          "node_index": 2,
+          "edge_index": 1,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S002",
+      "text": "冷水下锅，",
+      "start_char": 26,
+      "end_char": 31,
+      "node_indices": [
+        6,
+        7
+      ],
+      "edge_indices": [
+        5
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 6,
+          "edge_index": 5,
+          "role": "source"
+        },
+        {
+          "node_index": 7,
+          "edge_index": 5,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S003",
+      "text": "加入姜片、葱段、料酒，",
+      "start_char": 31,
+      "end_char": 42,
+      "node_indices": [
+        7,
+        8
+      ],
+      "edge_indices": [
+        6
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 8,
+          "edge_index": 6,
+          "role": "source"
+        },
+        {
+          "node_index": 7,
+          "edge_index": 6,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S004",
+      "text": "加入姜片、葱段、料酒，",
+      "start_char": 31,
+      "end_char": 42,
+      "node_indices": [
+        7,
+        9
+      ],
+      "edge_indices": [
+        7
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 9,
+          "edge_index": 7,
+          "role": "source"
+        },
+        {
+          "node_index": 7,
+          "edge_index": 7,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S005",
+      "text": "加入姜片、葱段、料酒，",
+      "start_char": 31,
+      "end_char": 42,
+      "node_indices": [
+        7,
+        10
+      ],
+      "edge_indices": [
+        8
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 10,
+          "edge_index": 8,
+          "role": "source"
+        },
+        {
+          "node_index": 7,
+          "edge_index": 8,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S006",
+      "text": "焯水去腥。",
+      "start_char": 42,
+      "end_char": 47,
+      "node_indices": [
+        5,
+        7,
+        11
+      ],
+      "edge_indices": [
+        9,
+        10
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 5,
+          "edge_index": 9,
+          "role": "source"
+        },
+        {
+          "node_index": 7,
+          "edge_index": 9,
+          "role": "receiver"
+        },
+        {
+          "node_index": 7,
+          "edge_index": 10,
+          "role": "input"
+        },
+        {
+          "node_index": 11,
+          "edge_index": 10,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S007",
+      "text": "焯水前可以先用盐揉洗猪肉，",
+      "start_char": 47,
+      "end_char": 60,
+      "node_indices": [
+        2,
+        3
+      ],
+      "edge_indices": [
+        2
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 3,
+          "edge_index": 2,
+          "role": "source"
+        },
+        {
+          "node_index": 2,
+          "edge_index": 2,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S008",
+      "text": "焯水前可以先用盐揉洗猪肉，",
+      "start_char": 47,
+      "end_char": 60,
+      "node_indices": [
+        2,
+        4
+      ],
+      "edge_indices": [
+        3
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 2,
+          "edge_index": 3,
+          "role": "input"
+        },
+        {
+          "node_index": 4,
+          "edge_index": 3,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S009",
+      "text": "再清洗干净。",
+      "start_char": 60,
+      "end_char": 66,
+      "node_indices": [
+        4,
+        5
+      ],
+      "edge_indices": [
+        4
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 4,
+          "edge_index": 4,
+          "role": "input"
+        },
+        {
+          "node_index": 5,
+          "edge_index": 4,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S010",
+      "text": "焯好的五花肉用纸巾擦干水分。",
+      "start_char": 70,
+      "end_char": 84,
+      "node_indices": [
+        11,
+        12
+      ],
+      "edge_indices": [
+        11
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 11,
+          "edge_index": 11,
+          "role": "input"
+        },
+        {
+          "node_index": 12,
+          "edge_index": 11,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S011",
+      "text": "开小火，",
+      "start_char": 84,
+      "end_char": 88,
+      "node_indices": [
+        13,
+        14
+      ],
+      "edge_indices": [
+        12
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 13,
+          "edge_index": 12,
+          "role": "input"
+        },
+        {
+          "node_index": 14,
+          "edge_index": 12,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S012",
+      "text": "锅中可不放油或放少量油，",
+      "start_char": 88,
+      "end_char": 100,
+      "node_indices": [
+        14,
+        15
+      ],
+      "edge_indices": [
+        13
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 15,
+          "edge_index": 13,
+          "role": "source"
+        },
+        {
+          "node_index": 14,
+          "edge_index": 13,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S013",
+      "text": "加入五花肉翻炒，将多余油脂煸出。",
+      "start_char": 100,
+      "end_char": 116,
+      "node_indices": [
+        12,
+        14,
+        16
+      ],
+      "edge_indices": [
+        14,
+        15
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 12,
+          "edge_index": 14,
+          "role": "source"
+        },
+        {
+          "node_index": 14,
+          "edge_index": 14,
+          "role": "receiver"
+        },
+        {
+          "node_index": 14,
+          "edge_index": 15,
+          "role": "input"
+        },
+        {
+          "node_index": 16,
+          "edge_index": 15,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S014",
+      "text": "另起锅放少许油，",
+      "start_char": 134,
+      "end_char": 142,
+      "node_indices": [
+        17,
+        18
+      ],
+      "edge_indices": [
+        16
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 18,
+          "edge_index": 16,
+          "role": "source"
+        },
+        {
+          "node_index": 17,
+          "edge_index": 16,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S015",
+      "text": "加入冰糖，",
+      "start_char": 142,
+      "end_char": 147,
+      "node_indices": [
+        17,
+        19
+      ],
+      "edge_indices": [
+        17
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 19,
+          "edge_index": 17,
+          "role": "source"
+        },
+        {
+          "node_index": 17,
+          "edge_index": 17,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S016",
+      "text": "小火炒出糖色，等糖浆呈香油色并开始冒泡。",
+      "start_char": 147,
+      "end_char": 167,
+      "node_indices": [
+        17,
+        19,
+        20
+      ],
+      "edge_indices": [
+        18
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 17,
+          "edge_index": 18,
+          "role": "input"
+        },
+        {
+          "node_index": 19,
+          "edge_index": 18,
+          "role": "context"
+        },
+        {
+          "node_index": 20,
+          "edge_index": 18,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S017",
+      "text": "放入煎好的五花肉",
+      "start_char": 171,
+      "end_char": 179,
+      "node_indices": [
+        16,
+        20
+      ],
+      "edge_indices": [
+        19
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 16,
+          "edge_index": 19,
+          "role": "source"
+        },
+        {
+          "node_index": 20,
+          "edge_index": 19,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S018",
+      "text": "煎好的五花肉炒至上色，",
+      "start_char": 173,
+      "end_char": 184,
+      "node_indices": [
+        20,
+        21
+      ],
+      "edge_indices": [
+        20
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 20,
+          "edge_index": 20,
+          "role": "input"
+        },
+        {
+          "node_index": 21,
+          "edge_index": 20,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S019",
+      "text": "加入少量老抽和生抽翻炒均匀，",
+      "start_char": 184,
+      "end_char": 198,
+      "node_indices": [
+        21,
+        22
+      ],
+      "edge_indices": [
+        21
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 22,
+          "edge_index": 21,
+          "role": "source"
+        },
+        {
+          "node_index": 21,
+          "edge_index": 21,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S020",
+      "text": "加入少量老抽和生抽翻炒均匀，",
+      "start_char": 184,
+      "end_char": 198,
+      "node_indices": [
+        21,
+        23
+      ],
+      "edge_indices": [
+        22
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 23,
+          "edge_index": 22,
+          "role": "source"
+        },
+        {
+          "node_index": 21,
+          "edge_index": 22,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S021",
+      "text": "老抽和生抽翻炒均匀，",
+      "start_char": 188,
+      "end_char": 198,
+      "node_indices": [
+        21,
+        24
+      ],
+      "edge_indices": [
+        23
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 21,
+          "edge_index": 23,
+          "role": "input"
+        },
+        {
+          "node_index": 24,
+          "edge_index": 23,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S022",
+      "text": "再加入八角、桂皮、香叶。",
+      "start_char": 198,
+      "end_char": 210,
+      "node_indices": [
+        24,
+        25
+      ],
+      "edge_indices": [
+        24
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 25,
+          "edge_index": 24,
+          "role": "source"
+        },
+        {
+          "node_index": 24,
+          "edge_index": 24,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S023",
+      "text": "再加入八角、桂皮、香叶。",
+      "start_char": 198,
+      "end_char": 210,
+      "node_indices": [
+        24,
+        26
+      ],
+      "edge_indices": [
+        25
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 26,
+          "edge_index": 25,
+          "role": "source"
+        },
+        {
+          "node_index": 24,
+          "edge_index": 25,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S024",
+      "text": "再加入八角、桂皮、香叶。",
+      "start_char": 198,
+      "end_char": 210,
+      "node_indices": [
+        24,
+        27
+      ],
+      "edge_indices": [
+        26
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 27,
+          "edge_index": 26,
+          "role": "source"
+        },
+        {
+          "node_index": 24,
+          "edge_index": 26,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S025",
+      "text": "加入热水没过五花肉，",
+      "start_char": 214,
+      "end_char": 224,
+      "node_indices": [
+        24,
+        28
+      ],
+      "edge_indices": [
+        27
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 28,
+          "edge_index": 27,
+          "role": "source"
+        },
+        {
+          "node_index": 24,
+          "edge_index": 27,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S026",
+      "text": "大火烧开",
+      "start_char": 224,
+      "end_char": 228,
+      "node_indices": [
+        24,
+        29,
+        30
+      ],
+      "edge_indices": [
+        28,
+        29
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 24,
+          "edge_index": 28,
+          "role": "source"
+        },
+        {
+          "node_index": 29,
+          "edge_index": 28,
+          "role": "receiver"
+        },
+        {
+          "node_index": 29,
+          "edge_index": 29,
+          "role": "environment"
+        },
+        {
+          "node_index": 30,
+          "edge_index": 29,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S027",
+      "text": "转小火炖煮约 50 分钟。",
+      "start_char": 229,
+      "end_char": 242,
+      "node_indices": [
+        30,
+        31
+      ],
+      "edge_indices": [
+        30
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 30,
+          "edge_index": 30,
+          "role": "input"
+        },
+        {
+          "node_index": 31,
+          "edge_index": 30,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S028",
+      "text": "最后加入盐调味，",
+      "start_char": 246,
+      "end_char": 254,
+      "node_indices": [
+        31,
+        32
+      ],
+      "edge_indices": [
+        31
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 32,
+          "edge_index": 31,
+          "role": "source"
+        },
+        {
+          "node_index": 31,
+          "edge_index": 31,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S029",
+      "text": "大火收汁即可。",
+      "start_char": 254,
+      "end_char": 261,
+      "node_indices": [
+        31,
+        35
+      ],
+      "edge_indices": [
+        34
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 31,
+          "edge_index": 34,
+          "role": "input"
+        },
+        {
+          "node_index": 35,
+          "edge_index": 34,
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "id": "S030",
+      "text": "放盐时也可以加入少量红豆腐乳或腐乳汤调色调味。",
+      "start_char": 261,
+      "end_char": 284,
+      "node_indices": [
+        31,
+        33
+      ],
+      "edge_indices": [
+        32
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 33,
+          "edge_index": 32,
+          "role": "source"
+        },
+        {
+          "node_index": 31,
+          "edge_index": 32,
+          "role": "receiver"
+        }
+      ]
+    },
+    {
+      "id": "S031",
+      "text": "放盐时也可以加入少量红豆腐乳或腐乳汤调色调味。",
+      "start_char": 261,
+      "end_char": 284,
+      "node_indices": [
+        31,
+        34
+      ],
+      "edge_indices": [
+        33
+      ],
+      "node_action_pairs": [
+        {
+          "node_index": 34,
+          "edge_index": 33,
+          "role": "source"
+        },
+        {
+          "node_index": 31,
+          "edge_index": 33,
+          "role": "receiver"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "index": 1,
+      "container": "none",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [],
+      "text_step_ids": [
+        "S001"
+      ]
+    },
+    {
+      "index": 2,
+      "container": "none",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 1,
+          "action": "cut",
+          "type": "prep",
+          "source_ingredient": "pork"
+        },
+        {
+          "edge_index": 2,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "salt"
+        }
+      ],
+      "text_step_ids": [
+        "S001",
+        "S007",
+        "S008"
+      ]
+    },
+    {
+      "index": 3,
+      "container": "none",
+      "name": "salt",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [],
+      "text_step_ids": [
+        "S007"
+      ]
+    },
+    {
+      "index": 4,
+      "container": "none",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 3,
+          "action": "wash",
+          "type": "prep",
+          "source_ingredient": "pork"
+        }
+      ],
+      "text_step_ids": [
+        "S008",
+        "S009"
+      ]
+    },
+    {
+      "index": 5,
+      "container": "none",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 4,
+          "action": "wash",
+          "type": "prep",
+          "source_ingredient": "pork"
+        }
+      ],
+      "text_step_ids": [
+        "S006",
+        "S009"
+      ]
+    },
+    {
+      "index": 6,
+      "container": "none",
+      "name": "water",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S002"
+      ]
+    },
+    {
+      "index": 7,
+      "container": "deep_pot",
+      "name": "deep_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 5,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "water"
+        },
+        {
+          "edge_index": 6,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "ginger"
+        },
+        {
+          "edge_index": 7,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "scallion"
+        },
+        {
+          "edge_index": 8,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "cooking_wine"
+        },
+        {
+          "edge_index": 9,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "pork"
+        }
+      ],
+      "text_step_ids": [
+        "S002",
+        "S003",
+        "S004",
+        "S005",
+        "S006"
+      ]
+    },
+    {
+      "index": 8,
+      "container": "none",
+      "name": "ginger",
+      "type": "aux",
+      "physical_state": "slice",
+      "chemical_state": "raw",
+      "flavor": "deodorizing",
+      "previous": [],
+      "text_step_ids": [
+        "S003"
+      ]
+    },
+    {
+      "index": 9,
+      "container": "none",
+      "name": "scallion",
+      "type": "aux",
+      "physical_state": "chunk",
+      "chemical_state": "raw",
+      "flavor": "aromatic",
+      "previous": [],
+      "text_step_ids": [
+        "S004"
+      ]
+    },
+    {
+      "index": 10,
+      "container": "none",
+      "name": "cooking_wine",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "deodorizing",
+      "previous": [],
+      "text_step_ids": [
+        "S005"
+      ]
+    },
+    {
+      "index": 11,
+      "container": "deep_pot",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 10,
+          "action": "blanch",
+          "type": "heat",
+          "source_ingredient": "deep_pot"
+        }
+      ],
+      "text_step_ids": [
+        "S006",
+        "S010"
+      ]
+    },
+    {
+      "index": 12,
+      "container": "none",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 11,
+          "action": "scrape",
+          "type": "prep",
+          "source_ingredient": "pork"
+        }
+      ],
+      "text_step_ids": [
+        "S010",
+        "S013"
+      ]
+    },
+    {
+      "index": 13,
+      "container": "wok_pot",
+      "name": "wok_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S011"
+      ]
+    },
+    {
+      "index": 14,
+      "container": "wok_pot",
+      "name": "wok_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 12,
+          "action": "heat",
+          "type": "heat",
+          "source_ingredient": "wok_pot"
+        },
+        {
+          "edge_index": 13,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "oil"
+        },
+        {
+          "edge_index": 14,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "pork"
+        }
+      ],
+      "text_step_ids": [
+        "S011",
+        "S012",
+        "S013"
+      ]
+    },
+    {
+      "index": 15,
+      "container": "none",
+      "name": "oil",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S012"
+      ]
+    },
+    {
+      "index": 16,
+      "container": "wok_pot",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 15,
+          "action": "fry",
+          "type": "heat",
+          "source_ingredient": "wok_pot"
+        }
+      ],
+      "text_step_ids": [
+        "S013",
+        "S017"
+      ]
+    },
+    {
+      "index": 17,
+      "container": "wok_pot",
+      "name": "wok_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 16,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "oil"
+        },
+        {
+          "edge_index": 17,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "sugar"
+        }
+      ],
+      "text_step_ids": [
+        "S014",
+        "S015",
+        "S016"
+      ]
+    },
+    {
+      "index": 18,
+      "container": "none",
+      "name": "oil",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S014"
+      ]
+    },
+    {
+      "index": 19,
+      "container": "none",
+      "name": "sugar",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": [],
+      "text_step_ids": [
+        "S015",
+        "S016"
+      ]
+    },
+    {
+      "index": 20,
+      "container": "wok_pot",
+      "name": "caramel_sauce",
+      "type": "main",
+      "physical_state": "liquid",
+      "chemical_state": "cooked",
+      "flavor": "sweet",
+      "previous": [
+        {
+          "edge_index": 18,
+          "action": "fry",
+          "type": "heat",
+          "source_ingredient": "wok_pot"
+        },
+        {
+          "edge_index": 19,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "pork"
+        }
+      ],
+      "text_step_ids": [
+        "S016",
+        "S017",
+        "S018"
+      ]
+    },
+    {
+      "index": 21,
+      "container": "wok_pot",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 20,
+          "action": "fry",
+          "type": "heat",
+          "source_ingredient": "caramel_sauce"
+        },
+        {
+          "edge_index": 21,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "dark_soy"
+        },
+        {
+          "edge_index": 22,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "light_soy"
+        }
+      ],
+      "text_step_ids": [
+        "S018",
+        "S019",
+        "S020",
+        "S021"
+      ]
+    },
+    {
+      "index": 22,
+      "container": "none",
+      "name": "dark_soy",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "sweet",
+      "previous": [],
+      "text_step_ids": [
+        "S019"
+      ]
+    },
+    {
+      "index": 23,
+      "container": "none",
+      "name": "light_soy",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [],
+      "text_step_ids": [
+        "S020"
+      ]
+    },
+    {
+      "index": 24,
+      "container": "wok_pot",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 23,
+          "action": "stir",
+          "type": "prep",
+          "source_ingredient": "pork"
+        },
+        {
+          "edge_index": 24,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "star_anise"
+        },
+        {
+          "edge_index": 25,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "cinnamon"
+        },
+        {
+          "edge_index": 26,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "bay_leaf"
+        },
+        {
+          "edge_index": 27,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "water"
+        }
+      ],
+      "text_step_ids": [
+        "S021",
+        "S022",
+        "S023",
+        "S024",
+        "S025",
+        "S026"
+      ]
+    },
+    {
+      "index": 25,
+      "container": "none",
+      "name": "star_anise",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "spicing",
+      "previous": [],
+      "text_step_ids": [
+        "S022"
+      ]
+    },
+    {
+      "index": 26,
+      "container": "none",
+      "name": "cinnamon",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "spicing",
+      "previous": [],
+      "text_step_ids": [
+        "S023"
+      ]
+    },
+    {
+      "index": 27,
+      "container": "none",
+      "name": "bay_leaf",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "spicing",
+      "previous": [],
+      "text_step_ids": [
+        "S024"
+      ]
+    },
+    {
+      "index": 28,
+      "container": "none",
+      "name": "water",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "cooked",
+      "flavor": "none",
+      "previous": [],
+      "text_step_ids": [
+        "S025"
+      ]
+    },
+    {
+      "index": 29,
+      "container": "sim_pot",
+      "name": "sim_pot",
+      "type": "container",
+      "flavor": "none",
+      "previous": [
+        {
+          "edge_index": 28,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "pork"
+        }
+      ],
+      "text_step_ids": [
+        "S026"
+      ]
+    },
+    {
+      "index": 30,
+      "container": "sim_pot",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 29,
+          "action": "heat",
+          "type": "heat",
+          "source_ingredient": "sim_pot"
+        }
+      ],
+      "text_step_ids": [
+        "S026",
+        "S027"
+      ]
+    },
+    {
+      "index": 31,
+      "container": "sim_pot",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 30,
+          "action": "simmer",
+          "type": "heat",
+          "source_ingredient": "pork"
+        },
+        {
+          "edge_index": 31,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "salt"
+        },
+        {
+          "edge_index": 32,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "red_tofu"
+        },
+        {
+          "edge_index": 33,
+          "action": "add",
+          "type": "prep",
+          "source_ingredient": "soup"
+        }
+      ],
+      "text_step_ids": [
+        "S027",
+        "S028",
+        "S029",
+        "S030",
+        "S031"
+      ]
+    },
+    {
+      "index": 32,
+      "container": "none",
+      "name": "salt",
+      "type": "aux",
+      "physical_state": "solid",
+      "chemical_state": "raw",
+      "flavor": "savory",
+      "previous": [],
+      "text_step_ids": [
+        "S028"
+      ]
+    },
+    {
+      "index": 33,
+      "container": "none",
+      "name": "red_tofu",
+      "type": "aux",
+      "physical_state": "paste",
+      "chemical_state": "cooked",
+      "flavor": "spicy",
+      "previous": [],
+      "text_step_ids": [
+        "S030"
+      ]
+    },
+    {
+      "index": 34,
+      "container": "none",
+      "name": "soup",
+      "type": "aux",
+      "physical_state": "liquid",
+      "chemical_state": "cooked",
+      "flavor": "umami",
+      "previous": [],
+      "text_step_ids": [
+        "S031"
+      ]
+    },
+    {
+      "index": 35,
+      "container": "sim_pot",
+      "name": "pork",
+      "type": "main",
+      "physical_state": "chunk",
+      "chemical_state": "cooked",
+      "flavor": "savory",
+      "previous": [
+        {
+          "edge_index": 34,
+          "action": "reduce",
+          "type": "heat",
+          "source_ingredient": "pork"
+        }
+      ],
+      "text_step_ids": [
+        "S029"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "index": 1,
+      "action": "cut",
+      "type": "prep",
+      "node1": 1,
+      "node2": 2,
+      "text_step_ids": [
+        "S001"
+      ]
+    },
+    {
+      "index": 2,
+      "action": "add",
+      "type": "prep",
+      "node1": 3,
+      "node2": 2,
+      "text_step_ids": [
+        "S007"
+      ]
+    },
+    {
+      "index": 3,
+      "action": "wash",
+      "type": "prep",
+      "node1": 2,
+      "node2": 4,
+      "text_step_ids": [
+        "S008"
+      ]
+    },
+    {
+      "index": 4,
+      "action": "wash",
+      "type": "prep",
+      "node1": 4,
+      "node2": 5,
+      "text_step_ids": [
+        "S009"
+      ]
+    },
+    {
+      "index": 5,
+      "action": "add",
+      "type": "prep",
+      "node1": 6,
+      "node2": 7,
+      "text_step_ids": [
+        "S002"
+      ]
+    },
+    {
+      "index": 6,
+      "action": "add",
+      "type": "prep",
+      "node1": 8,
+      "node2": 7,
+      "text_step_ids": [
+        "S003"
+      ]
+    },
+    {
+      "index": 7,
+      "action": "add",
+      "type": "prep",
+      "node1": 9,
+      "node2": 7,
+      "text_step_ids": [
+        "S004"
+      ]
+    },
+    {
+      "index": 8,
+      "action": "add",
+      "type": "prep",
+      "node1": 10,
+      "node2": 7,
+      "text_step_ids": [
+        "S005"
+      ]
+    },
+    {
+      "index": 9,
+      "action": "add",
+      "type": "prep",
+      "node1": 5,
+      "node2": 7,
+      "text_step_ids": [
+        "S006"
+      ]
+    },
+    {
+      "index": 10,
+      "action": "blanch",
+      "type": "heat",
+      "node1": 7,
+      "node2": 11,
+      "text_step_ids": [
+        "S006"
+      ]
+    },
+    {
+      "index": 11,
+      "action": "scrape",
+      "type": "prep",
+      "node1": 11,
+      "node2": 12,
+      "text_step_ids": [
+        "S010"
+      ]
+    },
+    {
+      "index": 12,
+      "action": "heat",
+      "type": "heat",
+      "node1": 13,
+      "node2": 14,
+      "text_step_ids": [
+        "S011"
+      ]
+    },
+    {
+      "index": 13,
+      "action": "add",
+      "type": "prep",
+      "node1": 15,
+      "node2": 14,
+      "text_step_ids": [
+        "S012"
+      ]
+    },
+    {
+      "index": 14,
+      "action": "add",
+      "type": "prep",
+      "node1": 12,
+      "node2": 14,
+      "text_step_ids": [
+        "S013"
+      ]
+    },
+    {
+      "index": 15,
+      "action": "fry",
+      "type": "heat",
+      "node1": 14,
+      "node2": 16,
+      "text_step_ids": [
+        "S013"
+      ]
+    },
+    {
+      "index": 16,
+      "action": "add",
+      "type": "prep",
+      "node1": 18,
+      "node2": 17,
+      "text_step_ids": [
+        "S014"
+      ]
+    },
+    {
+      "index": 17,
+      "action": "add",
+      "type": "prep",
+      "node1": 19,
+      "node2": 17,
+      "text_step_ids": [
+        "S015"
+      ]
+    },
+    {
+      "index": 18,
+      "action": "fry",
+      "type": "heat",
+      "node1": 17,
+      "node2": 20,
+      "text_step_ids": [
+        "S016"
+      ]
+    },
+    {
+      "index": 19,
+      "action": "add",
+      "type": "prep",
+      "node1": 16,
+      "node2": 20,
+      "text_step_ids": [
+        "S017"
+      ]
+    },
+    {
+      "index": 20,
+      "action": "fry",
+      "type": "heat",
+      "node1": 20,
+      "node2": 21,
+      "text_step_ids": [
+        "S018"
+      ]
+    },
+    {
+      "index": 21,
+      "action": "add",
+      "type": "prep",
+      "node1": 22,
+      "node2": 21,
+      "text_step_ids": [
+        "S019"
+      ]
+    },
+    {
+      "index": 22,
+      "action": "add",
+      "type": "prep",
+      "node1": 23,
+      "node2": 21,
+      "text_step_ids": [
+        "S020"
+      ]
+    },
+    {
+      "index": 23,
+      "action": "stir",
+      "type": "prep",
+      "node1": 21,
+      "node2": 24,
+      "text_step_ids": [
+        "S021"
+      ]
+    },
+    {
+      "index": 24,
+      "action": "add",
+      "type": "prep",
+      "node1": 25,
+      "node2": 24,
+      "text_step_ids": [
+        "S022"
+      ]
+    },
+    {
+      "index": 25,
+      "action": "add",
+      "type": "prep",
+      "node1": 26,
+      "node2": 24,
+      "text_step_ids": [
+        "S023"
+      ]
+    },
+    {
+      "index": 26,
+      "action": "add",
+      "type": "prep",
+      "node1": 27,
+      "node2": 24,
+      "text_step_ids": [
+        "S024"
+      ]
+    },
+    {
+      "index": 27,
+      "action": "add",
+      "type": "prep",
+      "node1": 28,
+      "node2": 24,
+      "text_step_ids": [
+        "S025"
+      ]
+    },
+    {
+      "index": 28,
+      "action": "add",
+      "type": "prep",
+      "node1": 24,
+      "node2": 29,
+      "text_step_ids": [
+        "S026"
+      ]
+    },
+    {
+      "index": 29,
+      "action": "heat",
+      "type": "heat",
+      "node1": 29,
+      "node2": 30,
+      "text_step_ids": [
+        "S026"
+      ]
+    },
+    {
+      "index": 30,
+      "action": "simmer",
+      "type": "heat",
+      "node1": 30,
+      "node2": 31,
+      "text_step_ids": [
+        "S027"
+      ],
+      "duration": "about 50 minutes"
+    },
+    {
+      "index": 31,
+      "action": "add",
+      "type": "prep",
+      "node1": 32,
+      "node2": 31,
+      "text_step_ids": [
+        "S028"
+      ]
+    },
+    {
+      "index": 32,
+      "action": "add",
+      "type": "prep",
+      "node1": 33,
+      "node2": 31,
+      "text_step_ids": [
+        "S030"
+      ]
+    },
+    {
+      "index": 33,
+      "action": "add",
+      "type": "prep",
+      "node1": 34,
+      "node2": 31,
+      "text_step_ids": [
+        "S031"
+      ]
+    },
+    {
+      "index": 34,
+      "action": "reduce",
+      "type": "heat",
+      "node1": 31,
+      "node2": 35,
+      "text_step_ids": [
+        "S029"
+      ]
+    }
+  ]
+}

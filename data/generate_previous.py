@@ -101,20 +101,11 @@ def fill_previous_for_recipe(recipe):
     return recipe
 
 def propagate_flavor_to_next_main(recipe):
-    """
-    Update flavor for main-process next nodes.
+    """Accumulate upstream flavors at PROCESS outputs, independent of node IDs.
 
-    Rule:
-    For a main node's next node (through non-add edge),
-    next_node.flavor = union(
-        parent_main.flavor,
-        all flavors brought by add-chains flowing into parent_main
-    )
-
-    Notes:
-    - add-chain means direct add or multi-layer add
-    - flavor propagates forward along main chain
-    - auxiliary flavor can be string / list / "none"
+    ADD receivers retain their state flavor. Their effective contents include
+    ADD inputs and flow into later PROCESS outputs, including container
+    outputs (e.g. a heated wok_pot stage carries the caramel flavor).
     """
 
     node_map = {int(n["index"]): n for n in recipe["nodes"]}
@@ -148,88 +139,50 @@ def propagate_flavor_to_next_main(recipe):
             return vals[0]
         return vals
 
-    # ---------- graph maps ----------
-    incoming_add = {}      # node_idx -> [source node idx] from add edges
-    outgoing_nonadd = {}   # node_idx -> [target node idx] from non-add edges
+    # Snapshot intrinsic/current flavors before writing any derived values.
+    original = {idx: node.get("flavor", "none") for idx, node in node_map.items()}
+    incoming = {}
+    process_outputs = set()
+    for edge in sorted(edges, key=lambda e: int(e["index"])):
+        source = int(edge["node1"])
+        target = int(edge["node2"])
+        incoming.setdefault(target, []).append(source)
+        if str(edge.get("action", "")).strip().lower() != "add":
+            process_outputs.add(target)
 
-    for e in edges:
-        u = int(e["node1"])
-        v = int(e["node2"])
-        action = str(e.get("action", "")).lower().strip()
-
-        if action == "add":
-            incoming_add.setdefault(v, []).append(u)
-        else:
-            outgoing_nonadd.setdefault(u, []).append(v)
-
-    # ---------- recursively collect all upstream add flavors ----------
     memo = {}
+    visiting = set()
 
-    def collect_add_chain_flavors(node_idx, visiting=None):
-        """
-        Collect all flavors from nodes that reach node_idx through add chains.
-        """
-        if node_idx in memo:
-            return memo[node_idx]
+    def effective_flavor(idx):
+        if idx in memo:
+            return memo[idx]
+        if idx in visiting:
+            raise ValueError(f"Cycle in flavor dependencies at node {idx}")
+        visiting.add(idx)
+        parts = [original[idx]]
+        for source in incoming.get(idx, []):
+            parts.append(effective_flavor(source))
+        visiting.remove(idx)
+        memo[idx] = merge_flavors(*parts)
+        return memo[idx]
 
-        if visiting is None:
-            visiting = set()
-        if node_idx in visiting:
-            return []
+    # Resolve everything before mutation; shared branches never cache partial
+    # propagation, and malformed cyclic graphs do not receive partial updates.
+    for idx in node_map:
+        effective_flavor(idx)
 
-        visiting.add(node_idx)
-        result = []
-
-        for src in incoming_add.get(node_idx, []):
-            src_node = node_map[src]
-
-            # source node's own flavor
-            for f in norm_flavor(src_node.get("flavor", "none")):
-                if f not in result:
-                    result.append(f)
-
-            # recursive upstream add flavors
-            for f in collect_add_chain_flavors(src, visiting):
-                if f not in result:
-                    result.append(f)
-
-        visiting.remove(node_idx)
-        memo[node_idx] = result
-        return result
-
-    # ---------- propagate to next main nodes ----------
-    # sort nodes by index so propagation is stable along main chain
-    main_nodes = sorted(
-        [n for n in recipe["nodes"] if str(n.get("type", "")).lower().strip() == "main"],
-        key=lambda n: int(n["index"])
-    )
-
-    for node in main_nodes:
-        u = int(node["index"])
-
-        # current main node accumulated flavor
-        current_main_flavor = norm_flavor(node.get("flavor", "none"))
-
-        # flavors introduced by add into this main node
-        added_flavor = collect_add_chain_flavors(u)
-
-        total_flavor_for_next = []
-        for f in current_main_flavor + added_flavor:
-            if f not in total_flavor_for_next:
-                total_flavor_for_next.append(f)
-
-        if not total_flavor_for_next:
-            continue
-
-        # write into next node(s) through non-add edges
-        for v in outgoing_nonadd.get(u, []):
-            next_node = node_map[v]
-            next_node["flavor"] = merge_flavors(
-                next_node.get("flavor", "none"),
-                total_flavor_for_next
-            )
+    for idx in process_outputs:
+        node = node_map[idx]
+        # ADD into this output belongs to its next PROCESS, not this state.
+        parts = [original[idx]]
+        for edge in edges:
+            if (int(edge["node2"]) == idx
+                    and str(edge.get("action", "")).strip().lower() != "add"):
+                parts.append(memo[int(edge["node1"])])
+        node["flavor"] = merge_flavors(*parts)
 
     return recipe
+
 
 def dump_recipe_pretty(path, recipe):
 
