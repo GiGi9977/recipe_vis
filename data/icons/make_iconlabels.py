@@ -2,16 +2,21 @@
 """Extract ingredient_physical_chemical icon names from recipe JSON files."""
 import argparse
 import json
+import re
 from pathlib import Path
 
-STATES = {"solid", "chunk", "slice", "shred", "dice", "paste", "powder", "liquid"}
+from icon_vocab import ALIASES, PHYSICAL_STATES
+
+# Every physical state a recipe may use, including names mapped onto another template (whole).
+STATES = set(PHYSICAL_STATES) | set(ALIASES)
 
 def extract_labels(recipe, source):
     labels, errors = set(), []
     for node in recipe["nodes"]:
         if str(node.get("type", "")).strip().lower() == "container":
             continue
-        name = str(node.get("name") or "").strip().lower()
+        # Spaces and underscores are one separator, like backend.graph_builder.build_icon_name.
+        name = re.sub(r"[\s_]+", "_", str(node.get("name") or "").strip().lower()).strip("_")
         physical = str(node.get("physical_state") or "").strip().lower()
         chemical = str(node.get("chemical_state") or "").strip().lower()
         if not name or physical not in STATES or not chemical:

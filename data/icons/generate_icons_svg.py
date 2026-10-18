@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Dict, Any, List, Tuple
 import re
 
-from openai import OpenAI
 from PIL import Image
+
+from icon_vocab import level_text, physical_state_of
 
 client = None  # Initialize only when an API request is actually needed.
 
@@ -53,7 +54,7 @@ TEMPLATES = {
   "egg_cracked": "two cracked shell halves plus one white blob/droplet below.",
   "egg_yolk_circle": "one circle yolk with a tiny highlight dot.",
 
-  "paste_blob": "one thick paste blob mound with a small highlight patch.",
+  "paste_blob": "one smooth rounded thick mound with a small highlight patch; no lumps, no drip.",
   "droplet": "one droplet silhouette with tiny highlight dot.",
   "crystals_cluster": "a cluster of 4–7 small crystal diamonds/squares.",
   "mound": "a flour mound heap with an optional secondary patch for volume.",
@@ -78,7 +79,8 @@ ICON_STATE_TEMPLATES = {
     "strip": "pieces_shreds", "strips": "pieces_shreds", "julienne": "pieces_shreds", "julienned": "pieces_shreds", "丝": "pieces_shreds",
     "dice": "pieces_dice", "diced": "pieces_dice", "丁": "pieces_dice",
     "pieces": "pieces_chunks", "piece": "pieces_chunks", "cut": "pieces_chunks",
-    "solid": "solid_form", "paste": "paste_blob", "powder": "powder_mound", "liquid": "liquid_drop",
+    "solid": "solid_form", "whole": "solid_form", "paste": "paste_blob", "powder": "powder_mound", "liquid": "liquid_drop",
+    "mash": "mash_mound", "batter": "batter_pool",
 }
 
 
@@ -93,11 +95,13 @@ def physical_template(icon_name):
 TEMPLATES.update({
     "pieces_chunks": "3 large irregular chunky blocks of the ingredient, visibly thick and substantial.",
     "pieces_slices": "3 broad thin overlapping slices of the ingredient, wide flat silhouettes.",
-    "pieces_shreds": "4 long narrow matchstick strips of the ingredient, clearly slender and elongated.",
+    "pieces_shreds": "6 long narrow matchstick strips of the ingredient, clearly slender and elongated.",
     "pieces_dice": "5 small uniform square dice of the ingredient, separated in a neat group; not large irregular chunks.",
     "solid_form": "one intact solid form of the named ingredient, without cutting or fragmentation.",
-    "powder_mound": "a fine powder heap silhouette with 2 tiny grain dots; no cubes or chunks.",
+    "powder_mound": "a fine powder heap silhouette made of 10-14 tiny grain dots; no cubes or chunks.",
     "liquid_drop": "one smooth liquid droplet silhouette; no solid pieces.",
+    "mash_mound": "a tall lumpy heap with a flat top and 3-4 coarse lumps on its surface; stiff and matte, no drip.",
+    "batter_pool": "a low flat spreading pool with a wavy glossy surface and one thick drip hanging from its edge.",
 })
 
 MARKS = {
@@ -152,6 +156,11 @@ def spec_to_prompt(spec: Dict[str, Any]) -> str:
   color_line = " / ".join([f"{k}({PALETTE.get(k,'#999')})" for k in colors])
 
   tmpl_desc = TEMPLATES.get(template, "a simple pictogram silhouette.")
+  # Where this physical state sits on its scale: size for solid forms, water for mixtures.
+  level_line = level_text(physical_state_of(icon))
+  kind = "smaller or bigger" if level_line.startswith("SIZE") else "drier or wetter"
+  level_block = (f"LEVEL (the icon must look clearly {kind} than the neighbouring levels):\n- {level_line}\n"
+                 if level_line else "")
   mark_desc = " ".join([MARKS.get(m, "") for m in marks if m])
 
   return f"""{STYLE}
@@ -164,6 +173,7 @@ DESC:
 SILHOUETTE TEMPLATE:
 - {tmpl_desc}
 
+{level_block}
 MARKS:
 - {mark_desc if mark_desc.strip() else "no extra marks"}
 
@@ -180,6 +190,7 @@ IMPORTANT:
 def call_image(prompt: str, retries: int = 3) -> Image.Image:
   global client
   if client is None:
+    from openai import OpenAI  # imported only when the API is really called
     client = OpenAI()
   last = None
   for a in range(retries):
@@ -197,6 +208,33 @@ def call_image(prompt: str, retries: int = 3) -> Image.Image:
       time.sleep(0.9*(a+1))
   raise RuntimeError(f"image gen failed: {last}")
 
+def icon_slug(name: str) -> str:
+  return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "icon"
+
+def generate_icon(spec: Dict[str, Any], out_dir: Path, size: int, candidates: int) -> Path:
+  """Generate candidates for one spec; save them and the best one as <slug>.png."""
+  out_dir.mkdir(parents=True, exist_ok=True)
+  slug = icon_slug(spec["icon_name"])
+  prompt = spec_to_prompt(spec)
+
+  cands: List[Tuple[float, Image.Image]] = []
+  for k in range(max(1, candidates)):
+    im = call_image(prompt)
+    im = trim_transparent(im, pad=14)
+    cands.append((alpha_coverage(im), im))
+
+  best = choose_best(cands)
+
+  # save candidates
+  for k, (cov, im) in enumerate(cands, start=1):
+    im2 = im.resize((size, size), Image.Resampling.LANCZOS)
+    im2.save(out_dir / f"{slug}_cand{k}_cov{cov:.2f}.png")
+
+  best2 = best.resize((size, size), Image.Resampling.LANCZOS)
+  path = out_dir / f"{slug}.png"
+  best2.save(path)
+  return path
+
 def main():
   ap = argparse.ArgumentParser()
   ap.add_argument("--in_json", default="icon_specs.json")
@@ -211,27 +249,8 @@ def main():
   out_dir.mkdir(parents=True, exist_ok=True)
 
   for i, spec in enumerate(specs, start=1):
-    name = spec["icon_name"]
-    slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "icon"
-    print(f"[{i}/{len(specs)}] {name} -> {slug}.png")
-
-    prompt = spec_to_prompt(spec)
-
-    cands: List[Tuple[float, Image.Image]] = []
-    for k in range(max(1, args.candidates)):
-      im = call_image(prompt)
-      im = trim_transparent(im, pad=14)
-      cands.append((alpha_coverage(im), im))
-
-    best = choose_best(cands)
-
-    # save candidates
-    for k, (cov, im) in enumerate(cands, start=1):
-      im2 = im.resize((args.size, args.size), Image.Resampling.LANCZOS)
-      im2.save(out_dir / f"{slug}_cand{k}_cov{cov:.2f}.png")
-
-    best2 = best.resize((args.size, args.size), Image.Resampling.LANCZOS)
-    best2.save(out_dir / f"{slug}.png")
+    print(f"[{i}/{len(specs)}] {spec['icon_name']} -> {icon_slug(spec['icon_name'])}.png")
+    generate_icon(spec, out_dir, args.size, args.candidates)
 
   print("[OK] wrote icons to", out_dir.resolve())
 

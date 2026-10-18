@@ -4,7 +4,7 @@ import json
 import time
 from pathlib import Path
 
-from openai import OpenAI
+from icon_vocab import PHYSICAL_STATES, physical_state_of, vocabulary_prompt
 
 
 client = None  # Initialize only when an API request is actually needed.
@@ -17,16 +17,7 @@ client = None  # Initialize only when an API request is actually needed.
 # All physical states are peer categories.
 # There is NO generic "pieces" category.
 # chunk / slice / shred / dice are independent physical states.
-PHYSICAL_CATEGORIES = (
-    "solid",
-    "chunk",
-    "slice",
-    "shred",
-    "dice",
-    "paste",
-    "powder",
-    "liquid",
-)
+PHYSICAL_CATEGORIES = PHYSICAL_STATES
 
 ICON_STATES = PHYSICAL_CATEGORIES
 
@@ -38,48 +29,22 @@ ICON_STATE_TEMPLATES = {
 
 def physical_template(icon_name):
     """
-    Extract physical state from an icon name.
+    Physical state encoded in an icon name (ingredient_physical_chemical).
 
-    Expected naming format:
-        ingredient_physical_chemical
-
-    Examples:
-        pork_chunk_raw
-        ginger_slice_raw
-        pork_shred_raw
-        onion_dice_raw
-        sauce_paste_cooked
-        salt_powder_raw
-        oil_liquid_raw
-        egg_solid_raw
-
-    The chemical state is removed first, then the final remaining token
-    must be one of PHYSICAL_CATEGORIES.
+    The chemical suffix is removed first; the last remaining token must be a
+    physical state (whole counts as solid). Returns the canonical template state.
     """
 
-    parts = str(icon_name).strip().lower().split("_")
+    state = physical_state_of(icon_name)
 
-    # Remove chemical / cooking-state suffix.
-    if parts and parts[-1] in {
-        "raw",
-        "cooked",
-        "none",
-        "baked",
-        "fried",
-        "boiled",
-    }:
-        parts = parts[:-1]
-
-    state = parts[-1] if parts else ""
-
-    if state not in ICON_STATE_TEMPLATES:
+    if state is None:
         raise ValueError(
             f"Unsupported physical state in {icon_name!r}. "
             f"Expected icon naming format ingredient_physical_chemical, "
-            f"with physical state in {PHYSICAL_CATEGORIES}."
+            f"with physical state in {PHYSICAL_CATEGORIES} (or whole)."
         )
 
-    return ICON_STATE_TEMPLATES[state]
+    return state
 
 
 # ============================================================
@@ -252,6 +217,8 @@ def infer_specs(icon_names, max_retries=3):
     global client
 
     if client is None:
+        from openai import OpenAI  # imported only when the API is really called
+
         client = OpenAI()
 
     families_json = json.dumps(
@@ -319,12 +286,15 @@ chunk
 slice
 shred
 dice
-paste
 powder
+mash
+paste
+batter
 liquid
 
+"whole" in an icon_name means solid (same template).
 
-These are EIGHT peer physical-state categories.
+These are TEN peer physical-state categories.
 
 There is NO generic "pieces" state.
 
@@ -334,8 +304,14 @@ pieces
 small_pieces
 cube
 cut
+whole
 
 as physical states.
+
+
+LEVELS (the icons must visibly differ along these scales):
+
+{vocabulary_prompt()}
 
 
 Use:
@@ -363,6 +339,31 @@ dice
 for small regularly diced forms.
 
 
+Use:
+
+powder
+
+for the finest dry grains.
+
+Use:
+
+mash
+
+for a stiff, lumpy, low-water solid-liquid mixture.
+
+Use:
+
+paste
+
+for a smooth, thick mixture with medium water.
+
+Use:
+
+batter
+
+for a runny mixture that spreads and drips.
+
+
 Examples:
 
 pork_chunk_raw
@@ -388,6 +389,15 @@ salt_powder_raw
 
 oil_liquid_raw
 → physical state = liquid
+
+potato_mash_cooked
+→ physical state = mash
+
+cake_batter_raw
+→ physical state = batter
+
+bay_leaf_whole_raw
+→ physical state = solid (template = solid)
 
 
 ==================================================
